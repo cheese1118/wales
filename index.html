@@ -3,24 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>妃嬪侍寢春宵錄 - 帝王臨幸密檔 (天子增強版)</title>
-
-    <!-- ===== PWA 必要設定 ===== -->
-    <link rel="manifest" href="manifest.json">
-
-    <!-- iOS Safari PWA 支援 -->
+    <!-- PWA / iPhone 主畫面設定 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#12051c">
+    <meta name="application-name" content="春宵錄">
+    <meta name="apple-mobile-web-app-title" content="春宵錄">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="春宵錄">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#0c0111">
+    <link rel="apple-touch-icon" sizes="152x152" href="./圖示/icon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./圖示/icon-180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./圖示/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./圖示/icon-512.png">
 
-    <!-- iOS 主畫面圖示 (SVG inline icon fallback) -->
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-    <!-- ===== /PWA 必要設定 ===== -->
+    <title>妃嬪侍寢春宵錄</title>
     <style>
         /* --- 核心皇家古風配色與背景 --- */
         * {
@@ -539,6 +534,31 @@
             box-shadow: 0 0 0 3px rgba(251, 207, 232, 0.08),
                         0 5px 16px rgba(0, 0, 0, 0.45);
             background: #1a0c2a;
+            cursor: zoom-in;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .record-avatar:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 0 3px rgba(251, 207, 232, 0.16),
+                        0 8px 22px rgba(219, 39, 119, 0.45);
+        }
+
+        /* 縮圖柔霧邊界：避免照片矩形邊緣在圓形頭像內太銳利 */
+        .record-avatar,
+        .image-preview-large,
+        .micro-avatar {
+            image-rendering: auto;
+        }
+
+        .photo-viewer-img {
+            width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 18px;
+            border: 1.5px solid rgba(212, 175, 55, 0.45);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.65);
+            background: rgba(0,0,0,0.35);
         }
 
         .record-details {
@@ -1008,6 +1028,11 @@
                 <form id="recordForm" onsubmit="saveRecord(event)">
                     <input type="hidden" id="editId">
 
+                    <div class="form-group">
+                        <label class="form-label">侍寢日期</label>
+                        <input type="date" id="inputDate" required class="form-input" style="height: 48px; font-family: monospace;">
+                    </div>
+
                     <div style="display: flex; gap: 12px; margin-bottom: 16px;">
                         <div style="flex: 1;">
                             <label class="form-label">雲雨時辰</label>
@@ -1128,6 +1153,23 @@
     </div>
 
 
+    <!-- 妃嬪原圖放大檢視彈窗 -->
+    <div id="photoViewerModal" class="modal-overlay" style="z-index: 320;">
+        <div class="modal-container" style="max-width: 620px; width: 96%; padding: 18px;">
+            <div class="modal-header" style="margin-bottom: 14px;">
+                <div>
+                    <span style="font-size: 10px; color: #db2777; font-weight: bold; display: block; letter-spacing: 1px;">ROYAL PORTRAIT VIEWER</span>
+                    <h3 id="photoViewerTitle" style="font-size: 18px; font-weight: bold; color: #fff;">妃嬪真容原圖</h3>
+                </div>
+                <button onclick="closePhotoViewer()" class="close-btn">&times;</button>
+            </div>
+            <img id="photoViewerImg" src="" class="photo-viewer-img">
+            <p style="font-size: 11px; color: #cbd5e1; text-align:center; margin-top: 10px; line-height: 1.5;">
+                點擊卡片頭像可查看原始上傳照片；舊版資料若沒有原圖，會顯示目前保存的裁切圖。
+            </p>
+        </div>
+    </div>
+
     <!-- 備份文字彈窗：iPhone 若無法真正下載，可直接複製保存 -->
     <div id="backupTextModal" class="confirm-overlay" style="z-index: 260;">
         <div class="confirm-container" style="max-width: 520px; border-color: rgba(212,175,55,0.7); text-align: left;">
@@ -1145,20 +1187,6 @@
 
     <div id="toast" class="toast">起居恩澤冊已更新</div>
 
-    <!-- ===== PWA Service Worker 註冊 ===== -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js').then(function(reg) {
-                    console.log('春宵錄 SW 已安裝:', reg.scope);
-                }).catch(function(err) {
-                    console.log('SW 安裝失敗:', err);
-                });
-            });
-        }
-    </script>
-    <!-- ===== /PWA Service Worker ===== -->
-
     <script>
         const defaultAvatar = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233e144a"/><stop offset="100%" stop-color="%236b21a8"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(%23g)"/><path d="M50 24c8 0 14 6 14 14s-6 12-14 12-14-4-14-12 6-14 14-14zm0 28c16 0 30 10 30 22v6H20v-6c0-12 14-22 30-22z" fill="%23db2777"/></svg>`;
 
@@ -1167,6 +1195,7 @@
         let currentDate = new Date();
         let activeDateStr = "";
         let tempBase64Image = "";
+        let tempOriginalImage = ""; // 保存未裁切原圖，用於點照片放大查看
         let onConfirmAction = null; 
 
         // 原生手勢與互動式裁剪控制狀態
@@ -1636,6 +1665,7 @@
         function closeModal() {
             document.getElementById('detailModal').classList.remove('active');
             tempBase64Image = "";
+            tempOriginalImage = "";
         }
 
         // 渲染選定日期的全後宮妃嬪葵水狀態
@@ -1691,7 +1721,7 @@
 
                 item.innerHTML = `
                     <div class="record-info">
-                        <img src="${rec.image}" class="record-avatar">
+                        <img src="${rec.image}" class="record-avatar" onclick="openPhotoViewer('${rec.id}', event)" title="點擊查看原圖">
                         <div class="record-details">
                             <div class="record-name-row">
                                 <span class="record-name">${rec.name}</span>
@@ -1708,6 +1738,23 @@
                 `;
                 container.appendChild(item);
             });
+        }
+
+
+        function openPhotoViewer(id, event) {
+            if (event) event.stopPropagation();
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+
+            const imgSrc = rec.originalImage || rec.image || defaultAvatar;
+            document.getElementById('photoViewerImg').src = imgSrc;
+            document.getElementById('photoViewerTitle').innerText = `${rec.name}｜真容原圖`;
+            document.getElementById('photoViewerModal').classList.add('active');
+        }
+
+        function closePhotoViewer() {
+            document.getElementById('photoViewerModal').classList.remove('active');
+            document.getElementById('photoViewerImg').src = "";
         }
 
         function toggleCustomLocation() {
@@ -1738,51 +1785,210 @@
                     document.getElementById('cropModal').classList.add('active');
                     drawPreview();
                 };
+                tempOriginalImage = e.target.result; // 保留完整原圖供放大檢視
                 sourceImg.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        // 渲染畫布預覽 (底圖邊緣智慧型擴散渲染 + 前台手勢畫像疊加)
+
+        // 從目前調整後照片的四周邊緣取樣，計算相近色背景。
+        // 這版不再把照片硬延展模糊，而是用邊緣色生成柔和背景，再讓照片柔邊融入。
+        function getAdjustedImageEdgePalette(img, x, y, w, h, canvasSize) {
+            const sampleCanvas = document.createElement('canvas');
+            sampleCanvas.width = canvasSize;
+            sampleCanvas.height = canvasSize;
+            const sCtx = sampleCanvas.getContext('2d');
+            sCtx.clearRect(0, 0, canvasSize, canvasSize);
+            sCtx.drawImage(img, x, y, w, h);
+
+            const imgData = sCtx.getImageData(0, 0, canvasSize, canvasSize);
+            const data = imgData.data;
+
+            const left = Math.max(0, Math.floor(x));
+            const top = Math.max(0, Math.floor(y));
+            const right = Math.min(canvasSize - 1, Math.ceil(x + w) - 1);
+            const bottom = Math.min(canvasSize - 1, Math.ceil(y + h) - 1);
+
+            const colors = [];
+            const step = 3;
+            const band = 10;
+
+            function pushPixel(px, py, weight = 1) {
+                if (px < 0 || py < 0 || px >= canvasSize || py >= canvasSize) return;
+                const i = (py * canvasSize + px) * 4;
+                const a = data[i + 3];
+                if (a < 20) return;
+
+                let r = data[i], g = data[i + 1], b = data[i + 2];
+
+                // 排除太白、太黑、太高飽和的雜訊，避免背景變髒或過亮
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const brightness = (r + g + b) / 3;
+                const saturation = max - min;
+
+                if (brightness < 18 || brightness > 245) return;
+                if (saturation > 150 && brightness > 190) return;
+
+                for (let k = 0; k < weight; k++) colors.push([r, g, b]);
+            }
+
+            if (right > left && bottom > top) {
+                // 取照片矩形邊緣附近的色彩，優先取靠近外框的顏色
+                for (let xx = left; xx <= right; xx += step) {
+                    for (let t = 0; t < band; t += 2) {
+                        pushPixel(xx, top + t, 2);
+                        pushPixel(xx, bottom - t, 2);
+                    }
+                }
+                for (let yy = top; yy <= bottom; yy += step) {
+                    for (let t = 0; t < band; t += 2) {
+                        pushPixel(left + t, yy, 2);
+                        pushPixel(right - t, yy, 2);
+                    }
+                }
+
+                // 補一點中心偏外圍色，讓背景不會只取到單一邊線
+                const innerBand = Math.max(12, Math.floor(Math.min(w, h) * 0.12));
+                for (let xx = left + innerBand; xx <= right - innerBand; xx += 8) {
+                    pushPixel(xx, top + innerBand, 1);
+                    pushPixel(xx, bottom - innerBand, 1);
+                }
+                for (let yy = top + innerBand; yy <= bottom - innerBand; yy += 8) {
+                    pushPixel(left + innerBand, yy, 1);
+                    pushPixel(right - innerBand, yy, 1);
+                }
+            }
+
+            // 如果取樣不足，給一個柔和紫棕底色
+            if (colors.length < 12) {
+                return {
+                    main: [86, 55, 78],
+                    light: [126, 89, 116],
+                    dark: [36, 18, 44]
+                };
+            }
+
+            // 使用中位數而不是平均，降低雜色影響
+            function median(arr) {
+                const sorted = arr.slice().sort((a, b) => a - b);
+                return sorted[Math.floor(sorted.length / 2)];
+            }
+
+            const rs = colors.map(c => c[0]);
+            const gs = colors.map(c => c[1]);
+            const bs = colors.map(c => c[2]);
+
+            let r = median(rs), g = median(gs), b = median(bs);
+
+            // 與系統底色融合，避免背景太突兀
+            const tint = [24, 7, 36];
+            r = Math.round(r * 0.72 + tint[0] * 0.28);
+            g = Math.round(g * 0.72 + tint[1] * 0.28);
+            b = Math.round(b * 0.72 + tint[2] * 0.28);
+
+            function clamp(v) { return Math.max(0, Math.min(255, Math.round(v))); }
+
+            return {
+                main: [clamp(r), clamp(g), clamp(b)],
+                light: [clamp(r * 1.25 + 18), clamp(g * 1.25 + 14), clamp(b * 1.25 + 18)],
+                dark: [clamp(r * 0.50), clamp(g * 0.50), clamp(b * 0.55)]
+            };
+        }
+
+        function drawEdgeColorBackground(ctx, img, x, y, w, h, canvasSize) {
+            const palette = getAdjustedImageEdgePalette(img, x, y, w, h, canvasSize);
+            const [r, g, b] = palette.main;
+            const [lr, lg, lb] = palette.light;
+            const [dr, dg, db] = palette.dark;
+
+            // 基底使用邊緣相近色
+            const linear = ctx.createLinearGradient(0, 0, canvasSize, canvasSize);
+            linear.addColorStop(0, `rgb(${lr}, ${lg}, ${lb})`);
+            linear.addColorStop(0.52, `rgb(${r}, ${g}, ${b})`);
+            linear.addColorStop(1, `rgb(${dr}, ${dg}, ${db})`);
+            ctx.fillStyle = linear;
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+            // 加上柔和光暈，讓背景像照片邊緣色自然暈開
+            const cx = Math.max(0, Math.min(canvasSize, x + w / 2));
+            const cy = Math.max(0, Math.min(canvasSize, y + h / 2));
+            const radial = ctx.createRadialGradient(cx, cy, 10, cx, cy, canvasSize * 0.72);
+            radial.addColorStop(0, `rgba(${lr}, ${lg}, ${lb}, 0.72)`);
+            radial.addColorStop(0.58, `rgba(${r}, ${g}, ${b}, 0.35)`);
+            radial.addColorStop(1, `rgba(${dr}, ${dg}, ${db}, 0.08)`);
+            ctx.fillStyle = radial;
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+            // 很淡的系統紫色罩，維持整體古風介面一致
+            ctx.fillStyle = "rgba(24, 7, 36, 0.12)";
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+        }
+
+        // 將清晰前景照片以更寬的柔霧邊緣疊上去，讓照片像融入邊緣色背景
+        function drawSoftForegroundImage(ctx, img, x, y, w, h, canvasSize) {
+            const fgCanvas = document.createElement('canvas');
+            fgCanvas.width = canvasSize;
+            fgCanvas.height = canvasSize;
+            const fgCtx = fgCanvas.getContext('2d');
+
+            fgCtx.drawImage(img, x, y, w, h);
+
+            const feather = Math.max(34, Math.min(78, Math.min(Math.abs(w), Math.abs(h)) * 0.24));
+            fgCtx.globalCompositeOperation = 'destination-in';
+
+            const gradX = fgCtx.createLinearGradient(x, 0, x + w, 0);
+            gradX.addColorStop(0, 'rgba(0,0,0,0)');
+            gradX.addColorStop(Math.min(0.48, feather / Math.max(1, Math.abs(w))), 'rgba(0,0,0,1)');
+            gradX.addColorStop(Math.max(0.52, 1 - feather / Math.max(1, Math.abs(w))), 'rgba(0,0,0,1)');
+            gradX.addColorStop(1, 'rgba(0,0,0,0)');
+            fgCtx.fillStyle = gradX;
+            fgCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+            const gradY = fgCtx.createLinearGradient(0, y, 0, y + h);
+            gradY.addColorStop(0, 'rgba(0,0,0,0)');
+            gradY.addColorStop(Math.min(0.48, feather / Math.max(1, Math.abs(h))), 'rgba(0,0,0,1)');
+            gradY.addColorStop(Math.max(0.52, 1 - feather / Math.max(1, Math.abs(h))), 'rgba(0,0,0,1)');
+            gradY.addColorStop(1, 'rgba(0,0,0,0)');
+            fgCtx.fillStyle = gradY;
+            fgCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+            fgCtx.globalCompositeOperation = 'source-over';
+
+            // 清晰圖微微柔化邊界，不模糊主臉
+            ctx.save();
+            ctx.filter = 'drop-shadow(0 0 10px rgba(251, 207, 232, 0.10))';
+            ctx.drawImage(fgCanvas, 0, 0);
+            ctx.restore();
+        }
+
+
+        // 渲染畫布預覽：偵測目前照片邊緣相近色作為背景，再讓照片柔邊融入
         function drawPreview() {
             const canvas = document.getElementById('previewCanvas');
             const ctx = canvas.getContext('2d');
-            
+
             canvas.width = 300;
             canvas.height = 300;
 
             let iw = sourceImg.width;
             let ih = sourceImg.height;
 
-            // 1. 先繪製背景擴散（滿版毛玻璃羽化效果）- 解決越界與縮放造成的周圍留空
-            let coverScale = Math.max(300 / iw, 300 / ih);
-            let cw = iw * coverScale;
-            let ch = ih * coverScale;
-            let cx = (300 - cw) / 2;
-            let cy = (300 - ch) / 2;
-
-            ctx.save();
-            // 套用原生硬體加速的高斯模糊、亮度與飽和度濾鏡，營造奢華香閨氛圍
-            if (typeof ctx.filter !== 'undefined') {
-                ctx.filter = 'blur(18px) brightness(0.42) saturate(1.25)';
-            }
-            ctx.drawImage(sourceImg, cx, cy, cw, ch);
-            ctx.restore();
-
-            // 在毛玻璃底圖之上，覆蓋一層浪漫紫夜半透明遮罩，使前後圖層邊界融合過渡極其協調
-            ctx.fillStyle = "rgba(24, 7, 36, 0.38)";
-            ctx.fillRect(0, 0, 300, 300);
-
-            // 2. 繪製前端可被滑鼠與單/雙指拖曳與縮放的清晰真容主體
+            // 前端可被滑鼠與單/雙指拖曳與縮放的清晰真容主體
             let scale = Math.min(240 / iw, 240 / ih) * currentZoom;
             let nw = iw * scale;
             let nh = ih * scale;
-            
+
             // 疊加拖曳位置變量 (offsetX, offsetY)
             let nx = (300 - nw) / 2 + offsetX;
             let ny = (300 - nh) / 2 + offsetY;
 
-            ctx.drawImage(sourceImg, nx, ny, nw, nh);
+            // 1. 背景：偵測目前照片四周邊緣相近色，生成柔和背景
+            drawEdgeColorBackground(ctx, sourceImg, nx, ny, nw, nh, 300);
+
+            // 2. 前景：清晰照片本身做更寬的柔邊，像融入背景
+            drawSoftForegroundImage(ctx, sourceImg, nx, ny, nw, nh, 300);
         }
 
         function cancelCrop() {
@@ -1810,7 +2016,7 @@
             // 若主圖有移出範圍，因預覽底層已先以照片邊緣模糊擴散填滿，
             // 所以輸出後也會自然保留暈開效果，不會出現空白。
             oCtx.drawImage(canvas, cropX, cropY, cropSize, cropSize, 0, 0, outCanvas.width, outCanvas.height);
-            tempBase64Image = outCanvas.toDataURL('image/jpeg', 0.92);
+            tempBase64Image = outCanvas.toDataURL('image/jpeg', 0.94);
 
             document.getElementById('cropModal').classList.remove('active');
             document.getElementById('imagePlaceholder').style.display = 'none';
@@ -1825,6 +2031,7 @@
             document.getElementById('submitBtn').innerText = '奉旨登錄春宵冊';
             
             document.getElementById('editId').value = '';
+            document.getElementById('inputDate').value = activeDateStr;
             document.getElementById('inputName').value = '';
             document.getElementById('inputStatus').value = 'completed';
             document.getElementById('locationSelect').value = '台南市';
@@ -1836,6 +2043,7 @@
             document.getElementById('imagePreviewContainer').style.display = 'none';
             
             tempBase64Image = '';
+            tempOriginalImage = '';
         }
 
         function editRecord(id) {
@@ -1848,6 +2056,7 @@
             document.getElementById('submitBtn').innerText = '奉旨修改春宵密存';
 
             document.getElementById('editId').value = rec.id;
+            document.getElementById('inputDate').value = rec.date || activeDateStr;
             
             let rawName = rec.name;
             if (rawName.endsWith("娘娘") && rawName.length > 2) rawName = rawName.slice(0, -2);
@@ -1868,6 +2077,7 @@
             }
 
             tempBase64Image = rec.image;
+            tempOriginalImage = rec.originalImage || rec.image;
             document.getElementById('imagePreview').src = rec.image;
             document.getElementById('imagePlaceholder').style.display = 'none';
             document.getElementById('imagePreviewContainer').style.display = 'flex';
@@ -1885,6 +2095,7 @@
 
             // 關鍵：清空 editId，儲存時才會「新增一筆」，不會覆蓋原紀錄
             document.getElementById('editId').value = '';
+            document.getElementById('inputDate').value = rec.date || activeDateStr;
 
             let rawName = rec.name;
             if (rawName.endsWith("娘娘") && rawName.length > 2) rawName = rawName.slice(0, -2);
@@ -1908,11 +2119,12 @@
             }
 
             tempBase64Image = rec.image || defaultAvatar;
+            tempOriginalImage = rec.originalImage || rec.image || defaultAvatar;
             document.getElementById('imagePreview').src = tempBase64Image;
             document.getElementById('imagePlaceholder').style.display = 'none';
             document.getElementById('imagePreviewContainer').style.display = 'flex';
 
-            showToast("已複製原紀錄內容，修改後可另存新紀錄");
+            showToast("已複製原紀錄內容，可修改日期與內容後另存新紀錄");
         }
 
 
@@ -1932,6 +2144,7 @@
             event.preventDefault();
 
             const editId = document.getElementById('editId').value;
+            const recordDate = document.getElementById('inputDate').value || activeDateStr;
             const finalName = autoApproveRoyalTitle(document.getElementById('inputName').value);
             const hour = parseInt(document.getElementById('inputHour').value);
             const status = document.getElementById('inputStatus').value;
@@ -1939,23 +2152,29 @@
             const finalLocation = (locSelect === 'custom') ? document.getElementById('inputCustomLocation').value.trim() : locSelect;
             const note = document.getElementById('inputNote').value.trim();
             const finalImage = tempBase64Image || defaultAvatar;
+            const oldRecord = editId ? records.find(r => r.id === editId) : null;
+            const finalOriginalImage = tempOriginalImage || (oldRecord ? (oldRecord.originalImage || oldRecord.image) : finalImage);
 
             if (editId) {
                 const index = records.findIndex(r => r.id === editId);
                 if (index !== -1) {
-                    records[index] = { ...records[index], name: finalName, hour, status, location: finalLocation, note, image: finalImage };
+                    records[index] = { ...records[index], date: recordDate, name: finalName, hour, status, location: finalLocation, note, image: finalImage, originalImage: finalOriginalImage };
                     showToast("恩澤已改，春宵冊已重新密封");
                 }
             } else {
-                records.push({ id: Date.now().toString(), date: activeDateStr, hour, name: finalName, status, location: finalLocation, note, image: finalImage });
+                records.push({ id: Date.now().toString(), date: recordDate, hour, name: finalName, status, location: finalLocation, note, image: finalImage, originalImage: finalOriginalImage });
                 showToast("敬事房已將今宵侍寢恩澤記入密檔");
             }
 
             records.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.hour - b.hour);
             localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
 
+            // 若修改時變更日期，直接切換彈窗到新日期，方便確認新紀錄位置
+            activeDateStr = recordDate;
+            document.getElementById('modalDateTitle').innerText = activeDateStr;
             renderCalendar();
             renderModalRecords();
+            renderModalMensCheck(activeDateStr);
             cancelForm();
             updateStatistics();
         }
@@ -2184,5 +2403,26 @@
             setTimeout(() => toast.classList.remove('active'), 2500);
         }
     </script>
+
+    <script>
+        // PWA 離線快取註冊：GitHub Pages / HTTPS 環境會生效
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function(reg) {
+                        console.log('春宵錄 PWA Service Worker 已註冊', reg.scope);
+                    })
+                    .catch(function(err) {
+                        console.log('Service Worker 註冊失敗：', err);
+                    });
+            });
+        }
+    </script>
+
+
+    <script>
+        console.log('妃嬪侍寢春宵錄 GitHub 更新檔 v11：縮圖邊緣相近色背景 + 新 App icon');
+    </script>
+
 </body>
 </html>
