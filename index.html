@@ -2056,271 +2056,135 @@
         let initialPinchDistance = 0;
         let initialZoom = 1.0;
 
-        window.onload = function() {
-            // 設定今日日期預設給葵水首日
+        
+        /* --- v22 儲存穩定層：IndexedDB + localStorage 雙備份 --- */
+        const ROYAL_DB_NAME = "royal_spring_sleep_db_v22";
+        const ROYAL_DB_STORE = "kv";
+        function openRoyalDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) return reject(new Error("No IndexedDB"));
+                const req = indexedDB.open(ROYAL_DB_NAME, 1);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(ROYAL_DB_STORE)) db.createObjectStore(ROYAL_DB_STORE);
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function idbSet(key, value) {
+            const db = await openRoyalDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(ROYAL_DB_STORE, "readwrite");
+                tx.objectStore(ROYAL_DB_STORE).put(value, key);
+                tx.oncomplete = () => { db.close(); resolve(true); };
+                tx.onerror = () => { db.close(); reject(tx.error); };
+            });
+        }
+        async function idbGet(key) {
+            const db = await openRoyalDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(ROYAL_DB_STORE, "readonly");
+                const req = tx.objectStore(ROYAL_DB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+                tx.oncomplete = () => db.close();
+            });
+        }
+        function getRoyalStateObject() {
+            return {
+                records: Array.isArray(records) ? records : [],
+                menstruation: Array.isArray(menstruationRecords) ? menstruationRecords : [],
+                monthBackgrounds: Array.isArray(monthBackgrounds) ? monthBackgrounds : new Array(12).fill(""),
+                exportedAt: new Date().toISOString(),
+                fileType: "royal_spring_sleep_archive_v22"
+            };
+        }
+        async function persistRoyalState(reason = "auto") {
+            const s = getRoyalStateObject();
+            try {
+                localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(s.records));
+                localStorage.setItem('royal_menstruation_v2', JSON.stringify(s.menstruation));
+                localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(s.monthBackgrounds));
+                localStorage.setItem('royal_last_save_summary_v22', JSON.stringify({ records: s.records.length, menstruation: s.menstruation.length, backgrounds: s.monthBackgrounds.filter(Boolean).length, reason, time: s.exportedAt }));
+            } catch(e) { console.warn("localStorage 寫入失敗，IndexedDB 仍會嘗試保存", e); }
+            try { await idbSet("royalState", s); return true; }
+            catch(e) { console.warn("IndexedDB 寫入失敗", e); return false; }
+        }
+        async function loadRoyalStateFromIDB() {
+            try {
+                const s = await idbGet("royalState");
+                if (s && typeof s === "object") return s;
+            } catch(e) { console.warn("IndexedDB 讀取失敗，改用 localStorage", e); }
+            return null;
+        }
+        function safeParseJsonText(text) {
+            text = String(text || "").replace(/^\uFEFF/, "").replace(/^\u200B/, "").trim();
+            return JSON.parse(text);
+        }
+        function normalizeImportedState(imported) {
+            if (Array.isArray(imported)) return { records: imported, menstruation: [], monthBackgrounds: monthBackgrounds || new Array(12).fill("") };
+            if (!imported || typeof imported !== "object") throw new Error("備份格式不正確");
+            const bgs = Array.isArray(imported.monthBackgrounds) ? imported.monthBackgrounds.slice(0, 12) : (monthBackgrounds || new Array(12).fill(""));
+            while (bgs.length < 12) bgs.push("");
+            return {
+                records: Array.isArray(imported.records) ? imported.records : [],
+                menstruation: Array.isArray(imported.menstruation) ? imported.menstruation : [],
+                monthBackgrounds: bgs
+            };
+        }
+
+        window.onload = async function() {
             document.getElementById('mensDate').value = new Date().toISOString().split('T')[0];
 
-            // 時辰下拉框生成
             const hourSelect = document.getElementById('inputHour');
-            for (let i = 0; i < 24; i++) {
-                const nextHour = (i + 1) % 24;
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.innerText = `${String(i).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
-                if (i === 21) opt.selected = true;
-                hourSelect.appendChild(opt);
-            }
-
-            // 初始化與讀取承恩起居錄
-            const sampleRecord = {
-                id: "sample_sweet",
-                date: "2026-05-17",
-                hour: 21,
-                name: "甜甜娘娘",
-                status: "completed",
-                location: "台南市",
-                note: "永康",
-                image: defaultAvatar
-            };
-
-            const saved = localStorage.getItem('royal_spring_sleep_v2');
-            if (saved) {
-                try { records = JSON.parse(saved); } catch(e) { records = [sampleRecord]; }
-            } else {
-                records = [sampleRecord];
-                localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
-            }
-
-            // 初始化與讀取葵水生理期紀錄
-            const sampleMens = [
-                { id: "mens_1", name: "甜甜娘娘", lastStartDate: "2026-05-15", cycleLength: 28, periodLength: 5 },
-                { id: "mens_2", name: "甄嬛娘娘", lastStartDate: "2026-05-02", cycleLength: 30, periodLength: 6 }
-            ];
-            const savedMens = localStorage.getItem('royal_menstruation_v2');
-            if (savedMens) {
-                try { menstruationRecords = JSON.parse(savedMens); } catch(e) { menstruationRecords = sampleMens; }
-            } else {
-                menstruationRecords = sampleMens;
-                localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
-            }
-
-            const savedMonthBgs = localStorage.getItem('royal_month_backgrounds_v12');
-            if (savedMonthBgs) {
-                try {
-                    const parsed = JSON.parse(savedMonthBgs);
-                    if (Array.isArray(parsed)) monthBackgrounds = parsed.slice(0, 12);
-                    while (monthBackgrounds.length < 12) monthBackgrounds.push("");
-                } catch(e) {
-                    monthBackgrounds = new Array(12).fill("");
+            if (hourSelect && hourSelect.options.length === 0) {
+                for (let i = 0; i < 24; i++) {
+                    const nextHour = (i + 1) % 24;
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.innerText = `${String(i).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
+                    if (i === 21) opt.selected = true;
+                    hourSelect.appendChild(opt);
                 }
             }
+
+            const idbState = await loadRoyalStateFromIDB();
+            if (idbState) {
+                records = Array.isArray(idbState.records) ? idbState.records : [];
+                menstruationRecords = Array.isArray(idbState.menstruation) ? idbState.menstruation : [];
+                monthBackgrounds = Array.isArray(idbState.monthBackgrounds) ? idbState.monthBackgrounds.slice(0, 12) : new Array(12).fill("");
+                while (monthBackgrounds.length < 12) monthBackgrounds.push("");
+            } else {
+                const saved = localStorage.getItem('royal_spring_sleep_v2');
+                const savedMens = localStorage.getItem('royal_menstruation_v2');
+                const savedMonthBgs = localStorage.getItem('royal_month_backgrounds_v12');
+
+                if (saved) { try { records = JSON.parse(saved); } catch(e) { records = []; } }
+                if (savedMens) { try { menstruationRecords = JSON.parse(savedMens); } catch(e) { menstruationRecords = []; } }
+                if (savedMonthBgs) {
+                    try {
+                        const parsed = JSON.parse(savedMonthBgs);
+                        if (Array.isArray(parsed)) monthBackgrounds = parsed.slice(0, 12);
+                        while (monthBackgrounds.length < 12) monthBackgrounds.push("");
+                    } catch(e) { monthBackgrounds = new Array(12).fill(""); }
+                }
+                await persistRoyalState("migrate-from-localStorage");
+            }
+
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
             renderCalendar();
             updateStatistics();
             renderMenstruationList();
             renderBackgroundManager();
             applyMonthBackground();
-            initSpringNightCanvas(); // 啟動春宵桃花動態落瓣
-            initCropCanvasEvents();  // 初始化手勢/滑鼠操作監聽
-            initMonthSwipe();        // 初始化左右滑動切換月份
+            initSpringNightCanvas();
+            initCropCanvasEvents();
+            initMonthSwipe();
+
+            console.log("春宵錄 v22 已載入", { records: records.length, menstruation: menstruationRecords.length, backgrounds: monthBackgrounds.filter(Boolean).length });
         };
-
-        /* --- 🌸 春宵情慾動態落花/光塵物理引擎 --- */
-        function initSpringNightCanvas() {
-            const canvas = document.getElementById('springNightCanvas');
-            const ctx = canvas.getContext('2d');
-            
-            let width = (canvas.width = window.innerWidth);
-            let height = (canvas.height = window.innerHeight);
-
-            window.addEventListener('resize', () => {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
-            });
-
-            const particles = [];
-            const maxParticles = 35; // 控制密度，優雅而不雜亂
-
-            class Petal {
-                constructor() {
-                    this.reset();
-                }
-
-                reset() {
-                    this.x = Math.random() * width;
-                    this.y = Math.random() * -height - 20;
-                    this.size = Math.random() * 8 + 6; // 桃花瓣大小
-                    this.speedY = Math.random() * 0.8 + 0.4;
-                    this.speedX = Math.random() * 0.5 - 0.25;
-                    this.rotation = Math.random() * Math.PI * 2;
-                    this.rotationSpeed = Math.random() * 0.02 - 0.01;
-                    this.opacity = Math.random() * 0.4 + 0.25;
-                    // 分為嫩粉花瓣與金黃情愫光塵
-                    this.isSpark = Math.random() > 0.85; 
-                }
-
-                update() {
-                    this.y += this.speedY;
-                    this.x += this.speedX + Math.sin(this.y / 30) * 0.2; // 輕微擺動
-                    this.rotation += this.rotationSpeed;
-
-                    if (this.y > height + 20 || this.x < -20 || this.x > width + 20) {
-                        this.reset();
-                    }
-                }
-
-                draw() {
-                    ctx.save();
-                    ctx.translate(this.x, this.y);
-                    ctx.rotate(this.rotation);
-                    ctx.globalAlpha = this.opacity;
-
-                    if (this.isSpark) {
-                        // 金黃雲雨光塵
-                        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
-                        grad.addColorStop(0, 'rgba(254, 240, 138, 1)');
-                        grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
-                        ctx.fillStyle = grad;
-                        ctx.beginPath();
-                        ctx.arc(0, 0, this.size, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else {
-                        // 粉嫩微醺桃花瓣
-                        ctx.fillStyle = 'rgba(244, 114, 182, 0.85)';
-                        ctx.beginPath();
-                        // 繪製心形/花瓣弧度
-                        ctx.moveTo(0, 0);
-                        ctx.bezierCurveTo(-this.size, -this.size / 1.5, -this.size * 1.5, this.size / 3, 0, this.size * 1.5);
-                        ctx.bezierCurveTo(this.size * 1.5, this.size / 3, this.size, -this.size / 1.5, 0, 0);
-                        ctx.closePath();
-                        ctx.fill();
-
-                        // 花瓣上的微亮粉色脈絡
-                        ctx.strokeStyle = 'rgba(251, 207, 232, 0.4)';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(0, 0);
-                        ctx.lineTo(0, this.size);
-                        ctx.stroke();
-                    }
-
-                    ctx.restore();
-                }
-            }
-
-            for (let i = 0; i < maxParticles; i++) {
-                particles.push(new Petal());
-            }
-
-            function animate() {
-                ctx.clearRect(0, 0, width, height);
-                for (let p of particles) {
-                    p.update();
-                    p.draw();
-                }
-                requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        /* --- 🎨 互動式手勢與滑鼠操作 Canvas 核心算法 --- */
-        function initCropCanvasEvents() {
-            const canvas = document.getElementById('previewCanvas');
-
-            // 1. 滑鼠滾輪無級縮放
-            canvas.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                const zoomSpeed = 1.05;
-                if (e.deltaY < 0) {
-                    currentZoom = Math.min(4.0, currentZoom * zoomSpeed); // 放大上限 4x
-                } else {
-                    currentZoom = Math.max(0.2, currentZoom / zoomSpeed); // 縮小下限 0.2x
-                }
-                drawPreview();
-            }, { passive: false });
-
-            // 2. 電腦滑鼠拖曳定位
-            canvas.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                const rect = canvas.getBoundingClientRect();
-                startX = e.clientX - rect.left;
-                startY = e.clientY - rect.top;
-            });
-
-            window.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                const rect = canvas.getBoundingClientRect();
-                const currentX = e.clientX - rect.left;
-                const currentY = e.clientY - rect.top;
-
-                // 計算位移差並疊加
-                offsetX += (currentX - startX);
-                offsetY += (currentY - startY);
-
-                startX = currentX;
-                startY = currentY;
-
-                drawPreview();
-            });
-
-            window.addEventListener('mouseup', function() {
-                isDragging = false;
-            });
-
-            // 3. 行動裝置原生手勢 (Touch Events) 支援
-            canvas.addEventListener('touchstart', function(e) {
-                const rect = canvas.getBoundingClientRect();
-                if (e.touches.length === 1) {
-                    // 單指拖曳
-                    isDragging = true;
-                    startX = e.touches[0].clientX - rect.left;
-                    startY = e.touches[0].clientY - rect.top;
-                } else if (e.touches.length === 2) {
-                    // 雙指捏合縮放
-                    isDragging = false;
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
-                    initialZoom = currentZoom;
-                }
-            });
-
-            canvas.addEventListener('touchmove', function(e) {
-                e.preventDefault(); // 強制阻止網頁背景滾動與回彈
-                const rect = canvas.getBoundingClientRect();
-
-                if (e.touches.length === 1 && isDragging) {
-                    const currentX = e.touches[0].clientX - rect.left;
-                    const currentY = e.touches[0].clientY - rect.top;
-
-                    offsetX += (currentX - startX);
-                    offsetY += (currentY - startY);
-
-                    startX = currentX;
-                    startY = currentY;
-
-                    drawPreview();
-                } else if (e.touches.length === 2) {
-                    // 雙指距離計算
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (initialPinchDistance > 0) {
-                        const factor = distance / initialPinchDistance;
-                        currentZoom = Math.max(0.2, Math.min(4.0, initialZoom * factor));
-                        drawPreview();
-                    }
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchend', function(e) {
-                isDragging = false;
-                initialPinchDistance = 0;
-            });
-        }
-
 
 
         function getCurrentMonthIndex() {
@@ -2340,6 +2204,7 @@
         /* --- 🖼️ 十二月份背景圖管理 --- */
         function saveMonthBackgrounds() {
             localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(monthBackgrounds));
+            persistRoyalState('backgrounds');
         }
 
         function compressImageToBase64(file, maxSize = 1200, quality = 0.78) {
@@ -2635,6 +2500,7 @@
             }
 
             localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
+            persistRoyalState('menstruation');
             document.getElementById('mensForm').reset();
             document.getElementById('mensDate').value = new Date().toISOString().split('T')[0];
             renderMenstruationList();
@@ -2645,6 +2511,7 @@
             showCustomConfirm(`皇上，您確定要抹去「${name}」的葵水起居註嗎？`, function() {
                 menstruationRecords = menstruationRecords.filter(m => m.id !== id);
                 localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
+            persistRoyalState('menstruation');
                 showToast("已退去該妃嬪生理檔案");
                 renderMenstruationList();
             });
@@ -3277,6 +3144,7 @@
 
             records.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.hour - b.hour);
             localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
+            persistRoyalState('records');
 
             // 若修改時變更日期，直接切換彈窗到新日期，方便確認新紀錄位置
             activeDateStr = recordDate;
@@ -3293,6 +3161,7 @@
             showCustomConfirm(`皇上，您確定要狠心抹去與「${target ? target.name : '後妃'}」的繾綣雲雨痕跡嗎？`, function() {
                 records = records.filter(r => r.id !== id);
                 localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
+            persistRoyalState('records');
                 showToast("已將該妃嬪侍寢名錄抹除");
                 renderCalendar();
                 renderModalRecords();
@@ -3368,13 +3237,7 @@
 
         /* --- 備份與管理功能 --- */
         function buildArchiveObject() {
-            return {
-                records: records,
-                menstruation: menstruationRecords,
-                monthBackgrounds: monthBackgrounds,
-                exportedAt: new Date().toISOString(),
-                fileType: "royal_spring_sleep_archive_v19"
-            };
+            return getRoyalStateObject();
         }
 
         function getArchiveFileName() {
@@ -3492,40 +3355,32 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
-                    const imported = JSON.parse(e.target.result);
-                    
-                    // 相容舊版陣列與新版物件包裝格式
-                    if (Array.isArray(imported)) {
-                        records = imported;
-                        localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
-                    } else if (imported.records) {
-                        records = Array.isArray(imported.records) ? imported.records : [];
-                        menstruationRecords = Array.isArray(imported.menstruation) ? imported.menstruation : [];
-                        if (Array.isArray(imported.monthBackgrounds)) {
-                            monthBackgrounds = imported.monthBackgrounds.slice(0, 12);
-                            while (monthBackgrounds.length < 12) monthBackgrounds.push("");
-                            localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(monthBackgrounds));
-                        }
-                        localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
-                        localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
-                    } else {
-                        showToast("❗️ 密存玉璽不對，導入失敗");
-                        return;
-                    }
-                    
-                    showToast("敬事房已重新核實並導入外部密冊");
+                    const imported = safeParseJsonText(e.target.result);
+                    const nextState = normalizeImportedState(imported);
+
+                    records = nextState.records;
+                    menstruationRecords = nextState.menstruation;
+                    monthBackgrounds = nextState.monthBackgrounds;
+
+                    await persistRoyalState('import-json');
+
                     renderCalendar();
                     updateStatistics();
                     renderMenstruationList();
                     renderBackgroundManager();
                     applyMonthBackground();
-                } catch(err) {
-                    showToast("❗️ 檔案損毀，無法破解密冊");
+
+                    showToast(`導入成功：侍寢${records.length}筆、葵水${menstruationRecords.length}筆、背景${monthBackgrounds.filter(Boolean).length}張`);
+                } catch (err) {
+                    console.error("導入失敗：", err);
+                    showToast("❗️ 導入失敗：JSON格式不正確或檔案損壞");
+                } finally {
+                    event.target.value = '';
                 }
             };
-            reader.readAsText(file);
+            reader.readAsText(file, "utf-8");
         }
 
         function clearAllData() {
@@ -3579,7 +3434,7 @@
     </script>
 
     <script>
-        console.log('妃嬪侍寢春宵錄 GitHub PWA v21 春字古裝女子icon 根目錄版');
+        console.log('妃嬪侍寢春宵錄 GitHub PWA v22 儲存穩定版');
     </script>
 
 </body>
