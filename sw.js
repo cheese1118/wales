@@ -1,4 +1,4 @@
-const CACHE_NAME = 'royal-spring-sleep-pwa-v11';
+const CACHE_NAME = 'royal-spring-sleep-pwa-v19';
 const APP_SHELL = [
   './',
   './index.html',

@@ -15,7 +15,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./圖示/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="./圖示/icon-512.png">
 
-    <title>妃嬪侍寢春宵錄</title>
+<title>妃嬪侍寢春宵錄</title>
     <style>
         /* --- 核心皇家古風配色與背景 --- */
         * {
@@ -834,9 +834,821 @@
         .badge-mens { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
         .badge-safe { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #a7f3d0; }
         .badge-fertile { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fde68a; }
+    
+        #monthBgLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(1.02);
+            transition: opacity 0.45s ease, background-image 0.45s ease;
+        }
+        #monthBgLayer.active { opacity: 0.62; }
+        #monthBgLayer::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 50% 35%, rgba(219, 39, 119, 0.10), transparent 48%),
+                linear-gradient(135deg, rgba(3, 0, 5, 0.58) 0%, rgba(12, 1, 17, 0.74) 100%);
+            backdrop-filter: blur(1.5px);
+            -webkit-backdrop-filter: blur(1.5px);
+        }
+        .month-bg-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .month-bg-card {
+            background: rgba(0,0,0,0.22);
+            border: 1px solid rgba(212, 175, 55, 0.18);
+            border-radius: 14px;
+            padding: 8px;
+            min-height: 118px;
+            position: relative;
+            overflow: hidden;
+        }
+        .month-bg-preview {
+            width: 100%;
+            height: 70px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px dashed rgba(212,175,55,0.22);
+            background-size: cover;
+            background-position: center;
+            margin-bottom: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 10px;
+        }
+        .month-bg-title {
+            font-size: 11px;
+            color: #fef08a;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        .month-bg-actions { display: flex; gap: 5px; }
+        .month-bg-mini-btn {
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 5px 3px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .month-bg-mini-btn.primary {
+            color: #fef08a;
+            border-color: rgba(212,175,55,0.3);
+            background: rgba(219,39,119,0.18);
+        }
+        .month-bg-mini-btn.danger { color: #fca5a5; }
+        .swipe-hint {
+            text-align: center;
+            font-size: 11px;
+            color: #fbcfe8;
+            opacity: 0.72;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+        @media (max-width: 520px) {
+            .month-bg-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+    
+        .current-month-bg-control {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(212,175,55,0.22);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .current-month-bg-preview {
+            height: 135px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(212,175,55,0.28);
+            background: rgba(255,255,255,0.04);
+            background-size: cover;
+            background-position: center;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#94a3b8;
+            font-size:12px;
+            margin: 10px 0;
+            overflow:hidden;
+        }
+
+    
+        /* --- v14 開放式月曆：讓月份背景完整呈現 --- */
+        #monthBgLayer.active {
+            opacity: 0.78;
+        }
+
+        .glass-panel {
+            background: rgba(18, 5, 28, 0.58) !important;
+            backdrop-filter: blur(18px) saturate(1.12);
+            -webkit-backdrop-filter: blur(18px) saturate(1.12);
+        }
+
+        #calendarPanel {
+            background: rgba(12, 2, 20, 0.22);
+            border-radius: 22px;
+            padding: 10px 6px 18px;
+        }
+
+        #calendarPanel .weekdays-grid {
+            gap: 0 !important;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.24);
+            margin-bottom: 0;
+            padding: 12px 0 10px;
+            color: rgba(254, 240, 138, 0.92);
+            background: transparent;
+        }
+
+        #calendarPanel .days-grid {
+            gap: 0 !important;
+            grid-auto-rows: minmax(78px, auto);
+            border-top: 1px solid rgba(255,255,255,0.04);
+            background: transparent;
+        }
+
+        #calendarPanel .day-cell {
+            aspect-ratio: auto !important;
+            min-height: 78px;
+            padding: 9px 7px 6px;
+            border-radius: 0 !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.075) !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            align-items: flex-start;
+            justify-content: flex-start;
+            overflow: visible;
+        }
+
+        #calendarPanel .day-cell:nth-child(7n+1),
+        #calendarPanel .day-cell:nth-child(7n) {
+            background: rgba(255,255,255,0.018) !important;
+        }
+
+        #calendarPanel .day-cell:hover {
+            background: rgba(219, 39, 119, 0.10) !important;
+            box-shadow: inset 0 0 18px rgba(219, 39, 119, 0.08) !important;
+        }
+
+        #calendarPanel .day-cell:active {
+            transform: scale(0.98);
+            background: rgba(219, 39, 119, 0.16) !important;
+        }
+
+        #calendarPanel .day-cell.today {
+            background: rgba(251, 191, 36, 0.10) !important;
+            border-bottom-color: rgba(251, 191, 36, 0.32) !important;
+        }
+
+        #calendarPanel .day-number {
+            font-size: 18px;
+            font-weight: 900;
+            color: rgba(248, 250, 252, 0.92);
+            font-family: 'Georgia', 'Times New Roman', "Microsoft JhengHei", serif;
+            line-height: 1;
+            letter-spacing: 0.5px;
+        }
+
+        #calendarPanel .today .day-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            height: 30px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #ef4444 0%, #db2777 100%);
+            color: #ffffff;
+            text-shadow: none;
+            box-shadow: 0 4px 16px rgba(219, 39, 119, 0.38);
+        }
+
+        #calendarPanel .status-dot {
+            width: 8px;
+            height: 8px;
+            top: 10px;
+            right: 10px;
+        }
+
+        #calendarPanel .avatar-list {
+            margin-top: 8px;
+            height: auto;
+            min-height: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+            overflow: visible;
+            gap: 4px;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 24px;
+            height: 24px;
+            border-width: 1.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.38);
+        }
+
+        #calendarPanel .more-indicator {
+            font-size: 11px;
+            color: #f472b6;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        }
+
+        #calendarPanel .month-selector {
+            padding: 6px 0 10px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.16);
+        }
+
+        #calendarPanel .month-title {
+            font-size: 26px;
+            letter-spacing: 4px;
+        }
+
+        #calendarPanel .swipe-hint {
+            margin-top: 10px;
+            margin-bottom: 2px;
+            color: rgba(251, 207, 232, 0.82);
+        }
+
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 78px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        @media (max-width: 520px) {
+            body {
+                padding: 8px;
+                align-items: flex-start;
+            }
+
+            .glass-panel {
+                padding: 14px;
+                border-radius: 22px;
+            }
+
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(72px, auto);
+            }
+
+            #calendarPanel .day-cell {
+                min-height: 72px;
+                padding: 8px 5px 5px;
+            }
+
+            #calendarPanel .day-number {
+                font-size: 17px;
+            }
+
+            #calendarPanel .micro-avatar {
+                width: 22px;
+                height: 22px;
+            }
+
+            #calendarPanel .month-title {
+                font-size: 24px;
+                letter-spacing: 3px;
+            }
+        }
+
+    
+        /* --- v15 全版面透明行事曆：移除卡片欄框，讓背景完整呈現 --- */
+        html, body {
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body {
+            padding: 0 !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            background-color: #030005;
+        }
+
+        #monthBgLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(1.02);
+            transition: opacity 0.45s ease, background-image 0.45s ease;
+        }
+
+        #monthBgLayer.active {
+            opacity: 0.92 !important;
+        }
+
+        #monthBgLayer::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(3,0,5,0.45) 0%, rgba(3,0,5,0.22) 42%, rgba(3,0,5,0.50) 100%),
+                radial-gradient(circle at 50% 20%, rgba(219,39,119,0.10), transparent 52%);
+            backdrop-filter: blur(0.8px);
+            -webkit-backdrop-filter: blur(0.8px);
+        }
+
+        .candle-glow-overlay {
+            background: radial-gradient(circle at 50% 40%, rgba(244, 63, 94, 0.035) 0%, transparent 72%) !important;
+        }
+
+        .glass-panel {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: 100vh;
+            border-radius: 0 !important;
+            border: none !important;
+            padding: 18px 18px 28px !important;
+            background: rgba(8, 1, 14, 0.18) !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        .glow-1, .glow-2 {
+            opacity: 0.45;
+        }
+
+        .header {
+            border-bottom: none !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 8px !important;
+            background: transparent !important;
+        }
+
+        .system-subtitle {
+            color: rgba(251, 207, 232, 0.92) !important;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.85), 0 0 10px rgba(244,114,182,0.48);
+        }
+
+        .system-title {
+            font-size: 34px !important;
+            text-shadow: 0 4px 18px rgba(0,0,0,0.85), 0 0 22px rgba(219,39,119,0.45) !important;
+        }
+
+        .royal-tabs {
+            background: rgba(8, 1, 14, 0.28) !important;
+            border: 1px solid rgba(212,175,55,0.16) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            margin-top: 6px;
+        }
+
+        #calendarPanel {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+        }
+
+        #calendarPanel .month-selector {
+            border: none !important;
+            padding: 18px 0 8px !important;
+            margin-top: 0 !important;
+        }
+
+        #calendarPanel .nav-btn {
+            background: rgba(10, 2, 18, 0.32) !important;
+            border: 1px solid rgba(212,175,55,0.20) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 5px 16px rgba(0,0,0,0.25);
+        }
+
+        #calendarPanel .month-title {
+            font-size: 32px !important;
+            letter-spacing: 5px !important;
+            color: #fef08a !important;
+            text-shadow: 0 4px 14px rgba(0,0,0,0.90), 0 0 12px rgba(254,240,138,0.32);
+        }
+
+        #calendarPanel .swipe-hint {
+            margin: 4px 0 10px !important;
+            color: rgba(251,207,232,0.88) !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+        }
+
+        #calendarPanel .weekdays-grid {
+            gap: 0 !important;
+            padding: 12px 0 8px !important;
+            margin-bottom: 0 !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.22) !important;
+            background: transparent !important;
+            color: rgba(254,240,138,0.96) !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        }
+
+        #calendarPanel .days-grid {
+            gap: 0 !important;
+            grid-auto-rows: minmax(92px, auto) !important;
+            background: transparent !important;
+            border: none !important;
+        }
+
+        #calendarPanel .day-cell {
+            aspect-ratio: auto !important;
+            min-height: 92px !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 10px 6px 6px !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .day-cell:hover {
+            background: rgba(255,255,255,0.05) !important;
+            box-shadow: none !important;
+        }
+
+        #calendarPanel .day-cell:active {
+            transform: scale(0.985) !important;
+            background: rgba(219,39,119,0.10) !important;
+        }
+
+        #calendarPanel .day-cell.today {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        #calendarPanel .day-number {
+            font-size: 20px !important;
+            font-weight: 900 !important;
+            color: rgba(255,255,255,0.92) !important;
+            font-family: 'Georgia', 'Times New Roman', "Microsoft JhengHei", serif !important;
+            line-height: 1.1 !important;
+            text-align: center;
+            text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7);
+        }
+
+        #calendarPanel .today .day-number {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ef4444 0%, #db2777 100%) !important;
+            color: #ffffff !important;
+            text-shadow: none !important;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.42), 0 0 14px rgba(219,39,119,0.55);
+        }
+
+        #calendarPanel .status-dot {
+            width: 7px !important;
+            height: 7px !important;
+            top: 11px !important;
+            right: 50% !important;
+            transform: translateX(26px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.65);
+        }
+
+        #calendarPanel .avatar-list {
+            width: 100%;
+            height: auto !important;
+            min-height: 24px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 24px !important;
+            height: 24px !important;
+            border: 1.5px solid rgba(212,175,55,0.72) !important;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.62);
+        }
+
+        #calendarPanel .more-indicator {
+            font-size: 11px !important;
+            color: #f472b6 !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        }
+
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 92px !important;
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .legend {
+            background: rgba(8, 1, 14, 0.22);
+            border: 1px solid rgba(212,175,55,0.14);
+            border-radius: 999px;
+            padding: 8px 10px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            margin-top: 18px !important;
+        }
+
+        @media (max-width: 520px) {
+            .glass-panel {
+                padding: 14px 12px 24px !important;
+            }
+
+            .system-title {
+                font-size: 30px !important;
+                letter-spacing: 3px !important;
+            }
+
+            #calendarPanel .month-title {
+                font-size: 28px !important;
+                letter-spacing: 4px !important;
+            }
+
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(82px, auto) !important;
+            }
+
+            #calendarPanel .day-cell,
+            #calendarPanel .days-grid > div:not(.day-cell) {
+                min-height: 82px !important;
+            }
+
+            #calendarPanel .day-number {
+                font-size: 18px !important;
+            }
+
+            #calendarPanel .micro-avatar {
+                width: 22px !important;
+                height: 22px !important;
+            }
+        }
+
+    
+        /* --- v16 壓縮年月列，讓月曆全貌更容易一頁呈現 --- */
+        #calendarPanel .month-selector {
+            padding: 4px 0 2px !important;
+            margin-top: -4px !important;
+            margin-bottom: 0 !important;
+        }
+
+        #calendarPanel .month-title {
+            font-size: 22px !important;
+            letter-spacing: 3px !important;
+            line-height: 1.1 !important;
+        }
+
+        #calendarPanel .nav-btn {
+            width: 34px !important;
+            height: 34px !important;
+            font-size: 13px !important;
+        }
+
+        #calendarPanel .swipe-hint {
+            margin: 1px 0 2px !important;
+            font-size: 10px !important;
+            line-height: 1.1 !important;
+        }
+
+        #calendarPanel br {
+            display: none !important;
+        }
+
+        #calendarPanel .weekdays-grid {
+            padding: 6px 0 5px !important;
+            font-size: 12px !important;
+        }
+
+        #calendarPanel .days-grid {
+            grid-auto-rows: minmax(68px, auto) !important;
+        }
+
+        #calendarPanel .day-cell,
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 68px !important;
+            padding: 6px 4px 4px !important;
+        }
+
+        #calendarPanel .day-number {
+            font-size: 16px !important;
+            line-height: 1 !important;
+        }
+
+        #calendarPanel .today .day-number {
+            min-width: 28px !important;
+            height: 28px !important;
+            padding: 0 6px !important;
+        }
+
+        #calendarPanel .avatar-list {
+            margin-top: 5px !important;
+            gap: 3px !important;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 19px !important;
+            height: 19px !important;
+        }
+
+        #calendarPanel .status-dot {
+            width: 7px !important;
+            height: 7px !important;
+            top: 7px !important;
+            transform: translateX(22px) !important;
+        }
+
+        .dot-condom { background-color: #38bdf8; }
+        .dot-raw { background-color: #ec4899; }
+
+        .badge-condom {
+            border-color: #38bdf8;
+            color: #bae6fd;
+            background: rgba(56, 189, 248, 0.16);
+        }
+
+        .badge-raw {
+            border-color: #ec4899;
+            color: #fbcfe8;
+            background: rgba(236, 72, 153, 0.15);
+        }
+
+        @media (max-width: 520px) {
+            .header {
+                gap: 8px !important;
+                padding-bottom: 6px !important;
+                margin-bottom: 4px !important;
+            }
+
+            .system-subtitle {
+                font-size: 9px !important;
+                letter-spacing: 3px !important;
+            }
+
+            .system-title {
+                font-size: 26px !important;
+                line-height: 1.08 !important;
+            }
+
+            .royal-tabs {
+                margin-bottom: 8px !important;
+            }
+
+            .royal-tab-btn {
+                padding: 8px 3px !important;
+                font-size: 11px !important;
+            }
+
+            #calendarPanel .month-title {
+                font-size: 21px !important;
+            }
+
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(64px, auto) !important;
+            }
+
+            #calendarPanel .day-cell,
+            #calendarPanel .days-grid > div:not(.day-cell) {
+                min-height: 64px !important;
+            }
+        }
+
+    
+        /* --- v17 放大日曆縮圖，單日多位向下堆疊 --- */
+        body {
+            overflow-y: auto !important;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            min-height: 100vh;
+            padding-bottom: 42px !important;
+        }
+
+        #calendarPanel .days-grid {
+            grid-auto-rows: minmax(118px, auto) !important;
+        }
+
+        #calendarPanel .day-cell,
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 118px !important;
+            padding: 7px 3px 8px !important;
+        }
+
+        #calendarPanel .day-cell {
+            align-items: center !important;
+            justify-content: flex-start !important;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .avatar-list {
+            width: 100% !important;
+            margin-top: 7px !important;
+            min-height: 58px !important;
+            height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            flex-wrap: nowrap !important;
+            gap: 5px !important;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 54px !important;
+            height: 54px !important;
+            min-width: 54px !important;
+            min-height: 54px !important;
+            border-width: 2px !important;
+            border-color: rgba(212, 175, 55, 0.82) !important;
+            box-shadow:
+                0 0 0 2px rgba(24, 7, 36, 0.42),
+                0 5px 14px rgba(0,0,0,0.55),
+                0 0 12px rgba(219,39,119,0.24) !important;
+        }
+
+        #calendarPanel .more-indicator {
+            font-size: 13px !important;
+            line-height: 1 !important;
+            margin-top: 0 !important;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: rgba(24, 7, 36, 0.45);
+            border: 1px solid rgba(236, 72, 153, 0.25);
+        }
+
+        #calendarPanel .day-cell:has(.micro-avatar) {
+            min-height: 136px !important;
+        }
+
+        #calendarPanel .status-dot {
+            top: 8px !important;
+            right: 50% !important;
+            transform: translateX(28px) !important;
+            z-index: 3;
+        }
+
+        .legend {
+            margin-top: 24px !important;
+            margin-bottom: 28px !important;
+        }
+
+        @media (max-width: 520px) {
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(108px, auto) !important;
+            }
+
+            #calendarPanel .day-cell,
+            #calendarPanel .days-grid > div:not(.day-cell) {
+                min-height: 108px !important;
+            }
+
+            #calendarPanel .micro-avatar {
+                width: 50px !important;
+                height: 50px !important;
+                min-width: 50px !important;
+                min-height: 50px !important;
+            }
+
+            #calendarPanel .day-cell:has(.micro-avatar) {
+                min-height: 128px !important;
+            }
+
+            #calendarPanel .day-number {
+                font-size: 17px !important;
+            }
+        }
+
     </style>
 </head>
 <body>
+
+    <div id="monthBgLayer"></div>
 
     <!-- 落櫻情色風情動畫畫布 -->
     <canvas id="springNightCanvas"></canvas>
@@ -868,6 +1680,7 @@
                 <span id="calendarTitle" class="month-title">2026年 05月</span>
                 <button onclick="changeMonth(1)" class="nav-btn">▶</button>
             </div>
+            <div class="swipe-hint">⇠ 左右滑動切換月份，縮圖可向下堆疊 ⇢</div>
             <br>
             <div class="weekdays-grid">
                 <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
@@ -881,8 +1694,12 @@
                     <span>盼帝臨幸 (待寢)</span>
                 </div>
                 <div class="legend-item">
+                    <span class="legend-dot" style="background-color: #38bdf8;"></span>
+                    <span>已賜雲雨 (戴套)</span>
+                </div>
+                <div class="legend-item">
                     <span class="legend-dot" style="background-color: #ec4899;"></span>
-                    <span>已賜雲雨 (侍寢)</span>
+                    <span>已賜雲雨 (無套)</span>
                 </div>
                 <div class="legend-item">
                     <span class="legend-dot" style="background-color: #ef4444;"></span>
@@ -984,17 +1801,44 @@
                 <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 16px; line-height: 1.5;">
                     皇上，此春宵錄完全保存在您的御用瀏覽器中。為防起居痕跡意外抹去，請定期將密冊存檔導出保存。<br>
                     <span style="color:#fef08a;">匯出檔名格式：</span><strong style="color:#f472b6;">春宵密存備份_日期.json</strong><br>
-                    <span style="color:#94a3b8;">iPhone 若找不到下載檔，請使用下方「顯示備份文字 / 一鍵複製」保存。</span>
+                    <span style="color:#94a3b8;">iPhone 會優先跳出分享選單，請選「儲存到檔案」。若仍失敗，再使用「顯示備份文字 / 一鍵複製」。</span>
                 </p>
                 <div style="display: flex; gap: 12px; margin-bottom: 10px;">
-                    <button onclick="exportArchive()" class="btn btn-primary" style="flex: 1; padding: 10px;">💾 導出春宵密存</button>
+                    <button onclick="exportArchive()" class="btn btn-primary" style="flex: 1; padding: 10px;">💾 匯出JSON / 儲存到檔案</button>
                     <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary" style="flex: 1; padding: 10px;">📂 導入春宵密存</button>
                 </div>
                 <button onclick="showBackupText()" class="btn btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 16px; color:#fef08a;">
-                    📋 下載找不到？顯示備份文字 / 一鍵複製
+                    📋 匯出失敗？顯示備份文字 / 儲存JSON
                 </button>
                 <input type="file" id="importFile" accept=".json" onchange="importArchive(event)" style="display: none;">
                 
+                <div class="section-card" style="margin-top: 16px;">
+                    <div class="section-title">🖼️ 十二月份專屬背景圖</div>
+                    <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 10px;">
+                        可為 1～12 月各設定一張背景圖。<strong style="color:#fef08a;">目前日曆停在哪個月份，就會套用那個月份的背景。</strong><br><span style="color:#94a3b8;">v18 背景固定修正版：月份切換以每月 1 號為基準，避免連續兩個月同圖或返回時跑掉。</span><br>
+                        若你只是選了其他月份的圖，但日曆還停在本月，看起來就不會變；可用下方「套用到目前月份」快速設定。
+                    </p>
+
+                    <div class="current-month-bg-control">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <div>
+                                <div style="font-size:13px; color:#fef08a; font-weight:bold;">目前日曆月份背景</div>
+                                <div id="currentMonthBgLabel" style="font-size:11px; color:#cbd5e1; margin-top:4px;">目前月份</div>
+                            </div>
+                            <button onclick="document.getElementById('currentMonthBgInput').click()" class="btn btn-primary" style="padding:8px 12px; font-size:12px;">套用到目前月份</button>
+                        </div>
+                        <input type="file" id="currentMonthBgInput" accept="image/*" onchange="handleCurrentMonthBackgroundUpload(event)" style="display:none;">
+                        <div id="currentMonthBgPreview" class="current-month-bg-preview">目前月份尚未設定背景</div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <button onclick="document.getElementById('bulkMonthBgInput').click()" class="btn btn-primary" style="flex:1; padding:9px;">一次匯入最多12張</button>
+                        <button onclick="clearAllMonthBackgrounds()" class="btn btn-secondary" style="flex:1; padding:9px;">清空背景圖</button>
+                    </div>
+                    <input type="file" id="bulkMonthBgInput" accept="image/*" multiple onchange="handleBulkMonthBackgroundUpload(event)" style="display:none;">
+                    <div id="monthBgGrid" class="month-bg-grid"></div>
+                </div>
+
                 <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 16px;">
                     <button onclick="clearAllData()" class="btn" style="width: 100%; background: #ef4444; color: #fff; font-size: 13px; padding: 8px;">⚠️ 封宮抹去全冊檔案</button>
                 </div>
@@ -1042,7 +1886,8 @@
                             <label class="form-label">恩澤狀態</label>
                             <select id="inputStatus" class="form-input" style="height: 48px; background: rgba(30,15,45,0.95);">
                                 <option value="pending">盼帝臨幸 (待寢)</option>
-                                <option value="completed">已賜雲雨 (侍寢)</option>
+                                <option value="condom">已賜雲雨 (戴套)</option>
+                                <option value="raw">已賜雲雨 (無套)</option>
                                 <option value="retained">恩澤留種 (留精)</option>
                             </select>
                         </div>
@@ -1175,12 +2020,13 @@
         <div class="confirm-container" style="max-width: 520px; border-color: rgba(212,175,55,0.7); text-align: left;">
             <h4 style="font-size: 18px; font-weight: bold; color: #fef08a; margin-bottom: 10px; letter-spacing: 1px; text-align:center;">【 春宵密存備份文字 】</h4>
             <p style="font-size: 12px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.6;">
-                若手機沒有出現下載檔，請按「複製備份文字」，再貼到備忘錄或檔案 App 新文字檔保存。之後也可用「導入春宵密存」選 JSON 檔；若仍找不到檔案，可把這段文字貼回來，我可幫你還原。
+                若手機沒有出現儲存選單，請按「儲存成JSON檔」再選「儲存到檔案」；若仍失敗，可按「複製文字」貼到備忘錄或文字檔保存。之後也可用「導入春宵密存」選 JSON 檔；若仍找不到檔案，可把這段文字貼回來，我可幫你還原。
             </p>
             <textarea id="backupTextArea" readonly class="form-input" style="width:100%; height:260px; font-size:11px; line-height:1.4; color:#fef08a; font-family:monospace; resize:none;"></textarea>
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 14px;">
-                <button onclick="copyBackupText()" class="btn btn-primary" style="flex: 1;">複製備份文字</button>
-                <button onclick="closeBackupTextModal()" class="btn btn-secondary" style="flex: 1;">關閉</button>
+                <button onclick="shareBackupTextAsFile()" class="btn btn-primary" style="flex: 1;">儲存成JSON檔</button>
+                <button onclick="copyBackupText()" class="btn btn-secondary" style="flex: 1;">複製文字</button>
+                <button onclick="closeBackupTextModal()" class="btn btn-secondary" style="flex: 0.7;">關閉</button>
             </div>
         </div>
     </div>
@@ -1196,6 +2042,7 @@
         let activeDateStr = "";
         let tempBase64Image = "";
         let tempOriginalImage = ""; // 保存未裁切原圖，用於點照片放大查看
+        let monthBackgrounds = new Array(12).fill(""); // 1～12月專屬背景圖
         let onConfirmAction = null; 
 
         // 原生手勢與互動式裁剪控制狀態
@@ -1257,11 +2104,25 @@
                 localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
             }
 
+            const savedMonthBgs = localStorage.getItem('royal_month_backgrounds_v12');
+            if (savedMonthBgs) {
+                try {
+                    const parsed = JSON.parse(savedMonthBgs);
+                    if (Array.isArray(parsed)) monthBackgrounds = parsed.slice(0, 12);
+                    while (monthBackgrounds.length < 12) monthBackgrounds.push("");
+                } catch(e) {
+                    monthBackgrounds = new Array(12).fill("");
+                }
+            }
+
             renderCalendar();
             updateStatistics();
             renderMenstruationList();
+            renderBackgroundManager();
+            applyMonthBackground();
             initSpringNightCanvas(); // 啟動春宵桃花動態落瓣
             initCropCanvasEvents();  // 初始化手勢/滑鼠操作監聽
+            initMonthSwipe();        // 初始化左右滑動切換月份
         };
 
         /* --- 🌸 春宵情慾動態落花/光塵物理引擎 --- */
@@ -1460,6 +2321,227 @@
             });
         }
 
+
+
+        function getCurrentMonthIndex() {
+            return currentDate.getMonth();
+        }
+
+        function setCalendarMonthByOffset(dir) {
+            // 修正 JS Date.setMonth 在 29/30/31 號切換月份時的溢位問題：
+            // 例如 5/31 + 1 個月可能跳到 7 月，導致背景連續或跑掉。
+            // 所以先固定到每月 1 號，再切換月份。
+            const y = currentDate.getFullYear();
+            const m = currentDate.getMonth();
+            currentDate = new Date(y, m + dir, 1);
+        }
+
+
+        /* --- 🖼️ 十二月份背景圖管理 --- */
+        function saveMonthBackgrounds() {
+            localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(monthBackgrounds));
+        }
+
+        function compressImageToBase64(file, maxSize = 1200, quality = 0.78) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let w = img.width;
+                        let h = img.height;
+                        const scale = Math.min(1, maxSize / Math.max(w, h));
+                        w = Math.round(w * scale);
+                        h = Math.round(h * scale);
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderBackgroundManager() {
+            const grid = document.getElementById('monthBgGrid');
+            if (!grid) return;
+
+            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            grid.innerHTML = '';
+
+            for (let i = 0; i < 12; i++) {
+                const card = document.createElement('div');
+                card.className = 'month-bg-card';
+
+                const hasBg = !!monthBackgrounds[i];
+                card.innerHTML = `
+                    <div class="month-bg-title">${monthNames[i]}背景</div>
+                    <div class="month-bg-preview" id="monthBgPreview${i}" style="${hasBg ? `background-image:url('${monthBackgrounds[i]}')` : ''}">
+                        ${hasBg ? '' : '尚未設定'}
+                    </div>
+                    <input type="file" id="monthBgInput${i}" accept="image/*" onchange="handleSingleMonthBackgroundUpload(event, ${i})" style="display:none;">
+                    <div class="month-bg-actions">
+                        <button onclick="document.getElementById('monthBgInput${i}').click()" class="month-bg-mini-btn primary">設定</button>
+                        <button onclick="clearMonthBackground(${i})" class="month-bg-mini-btn danger">清除</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+            updateCurrentMonthBackgroundPreview();
+        }
+
+        async function handleSingleMonthBackgroundUpload(event, index) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                monthBackgrounds[index] = await compressImageToBase64(file);
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast(`已設定 ${index + 1} 月背景圖`);
+            } catch(e) {
+                showToast("背景圖讀取失敗，請換一張圖片試試");
+            }
+
+            event.target.value = '';
+        }
+
+        async function handleCurrentMonthBackgroundUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const index = getCurrentMonthIndex();
+            try {
+                monthBackgrounds[index] = await compressImageToBase64(file);
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast(`已立即套用到目前日曆月份：${index + 1} 月`);
+            } catch(e) {
+                showToast("背景圖讀取失敗，請換一張圖片試試");
+            }
+
+            event.target.value = '';
+        }
+
+        function updateCurrentMonthBackgroundPreview() {
+            const label = document.getElementById('currentMonthBgLabel');
+            const preview = document.getElementById('currentMonthBgPreview');
+            if (!label || !preview) return;
+
+            const index = getCurrentMonthIndex();
+            label.innerText = `目前日曆停在 ${index + 1} 月，選圖會直接套用到 ${index + 1} 月`;
+            const bg = monthBackgrounds[index];
+
+            if (bg) {
+                preview.style.backgroundImage = `url('${bg}')`;
+                preview.innerText = "";
+            } else {
+                preview.style.backgroundImage = "";
+                preview.innerText = `${index + 1} 月尚未設定背景`;
+            }
+        }
+
+        async function handleBulkMonthBackgroundUpload(event) {
+            const files = Array.from(event.target.files || []).slice(0, 12);
+            if (files.length === 0) return;
+
+            showToast(`正在匯入 ${files.length} 張月份背景圖...`);
+
+            try {
+                for (let i = 0; i < files.length; i++) {
+                    monthBackgrounds[i] = await compressImageToBase64(files[i]);
+                }
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast(`已匯入 ${files.length} 張背景圖；目前只會顯示日曆所在月份的背景`);
+            } catch(e) {
+                showToast("部分背景圖匯入失敗，請確認圖片格式");
+            }
+
+            event.target.value = '';
+        }
+
+        function clearMonthBackground(index) {
+            monthBackgrounds[index] = "";
+            saveMonthBackgrounds();
+            renderBackgroundManager();
+            applyMonthBackground();
+            showToast(`已清除 ${index + 1} 月背景圖`);
+        }
+
+        function clearAllMonthBackgrounds() {
+            showCustomConfirm("皇上，確定要清空 1～12 月所有背景圖嗎？侍寢紀錄不會被刪除。", function() {
+                monthBackgrounds = new Array(12).fill("");
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast("已清空所有月份背景圖");
+            });
+        }
+
+        function applyMonthBackground() {
+            const bgLayer = document.getElementById('monthBgLayer');
+            if (!bgLayer) return;
+
+            const monthIndex = getCurrentMonthIndex();
+            const bg = monthBackgrounds[monthIndex] || "";
+
+            // 先清掉舊背景再套新背景，避免 Safari / iPhone 視覺上殘留上一個月
+            bgLayer.classList.remove('active');
+            bgLayer.style.backgroundImage = '';
+
+            if (bg) {
+                requestAnimationFrame(() => {
+                    bgLayer.style.backgroundImage = `url('${bg}')`;
+                    bgLayer.classList.add('active');
+                });
+            }
+
+            updateCurrentMonthBackgroundPreview();
+        }
+
+        function initMonthSwipe() {
+            const target = document.getElementById('calendarPanel');
+            if (!target) return;
+
+            let startX = 0;
+            let startY = 0;
+            let startTime = 0;
+
+            target.addEventListener('touchstart', function(e) {
+                if (!e.touches || e.touches.length !== 1) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startTime = Date.now();
+            }, { passive: true });
+
+            target.addEventListener('touchend', function(e) {
+                if (!e.changedTouches || e.changedTouches.length !== 1) return;
+
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const dt = Date.now() - startTime;
+
+                if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.35 && dt < 700) {
+                    if (dx < 0) changeMonth(1);
+                    else changeMonth(-1);
+                }
+            }, { passive: true });
+        }
+
+
         // 分頁切換器
         function switchTab(tabId) {
             document.querySelectorAll('.royal-tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1481,6 +2563,7 @@
                 updateStatistics();
             } else if (tabId === 'settings') {
                 document.getElementById('settingsPanel').style.display = 'block';
+                renderBackgroundManager();
             }
         }
 
@@ -1597,9 +2680,33 @@
             });
         }
 
+
+        function normalizeStatus(status) {
+            // 舊版資料相容：原本 completed 一律歸為「無套侍寢」
+            return status === 'completed' ? 'raw' : status;
+        }
+
+        function isGraceStatus(status) {
+            status = normalizeStatus(status);
+            return status === 'condom' || status === 'raw' || status === 'retained';
+        }
+
+        function getStatusDisplay(status) {
+            status = normalizeStatus(status);
+            if (status === 'pending') return { text: '盼帝臨幸', badgeClass: 'badge-pending', dotClass: 'dot-pending' };
+            if (status === 'condom') return { text: '已賜雲雨・戴套', badgeClass: 'badge-condom', dotClass: 'dot-condom' };
+            if (status === 'raw') return { text: '已賜雲雨・無套', badgeClass: 'badge-raw', dotClass: 'dot-raw' };
+            if (status === 'retained') return { text: '恩澤留種', badgeClass: 'badge-retained', dotClass: 'dot-retained' };
+            return { text: '已賜雲雨・無套', badgeClass: 'badge-raw', dotClass: 'dot-raw' };
+        }
+
+
         function renderCalendar() {
+            applyMonthBackground();
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
+            // 月曆與背景固定以該月 1 號為基準，避免切換月份時跑版或背景錯位
+            currentDate = new Date(year, month, 1);
             document.getElementById('calendarTitle').innerText = `${year}年 ${String(month + 1).padStart(2, '0')}月`;
 
             const grid = document.getElementById('calendarGrid');
@@ -1631,15 +2738,16 @@
 
                 if (dayRecords.length > 0) {
                     let dotClass = 'dot-pending';
-                    if (dayRecords.some(r => r.status === 'retained')) dotClass = 'dot-retained';
-                    else if (dayRecords.some(r => r.status === 'completed')) dotClass = 'dot-completed';
+                    if (dayRecords.some(r => normalizeStatus(r.status) === 'retained')) dotClass = 'dot-retained';
+                    else if (dayRecords.some(r => normalizeStatus(r.status) === 'raw')) dotClass = 'dot-raw';
+                    else if (dayRecords.some(r => normalizeStatus(r.status) === 'condom')) dotClass = 'dot-condom';
                     innerHTML += `<span class="status-dot ${dotClass}"></span>`;
                 }
 
                 let avatarHTML = '<div class="avatar-list">';
                 dayRecords.forEach((r, idx) => {
-                    if (idx < 2) avatarHTML += `<img src="${r.image}" class="micro-avatar">`;
-                    else if (idx === 2) avatarHTML += `<span class="more-indicator">+${dayRecords.length - 2}</span>`;
+                    // v17：縮圖放大；同一天多位妃嬪時向下堆疊顯示
+                    avatarHTML += `<img src="${r.image}" class="micro-avatar" title="${r.name || ''}">`;
                 });
                 avatarHTML += '</div>';
 
@@ -1649,7 +2757,8 @@
         }
 
         function changeMonth(dir) {
-            currentDate.setMonth(currentDate.getMonth() + dir);
+            setCalendarMonthByOffset(dir);
+            applyMonthBackground();
             renderCalendar();
         }
 
@@ -1709,13 +2818,13 @@
                 const nextHour = (rec.hour + 1) % 24;
                 const timeStr = `${String(rec.hour).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
                 
-                let statusText = '盼帝臨幸', statusClass = 'badge-pending';
-                if (rec.status === 'completed') { statusText = '已賜雲雨'; statusClass = 'badge-completed'; }
-                else if (rec.status === 'retained') { statusText = '恩澤留種'; statusClass = 'badge-retained'; }
+                const statusInfo = getStatusDisplay(rec.status);
+                let statusText = statusInfo.text, statusClass = statusInfo.badgeClass;
 
                 const item = document.createElement('div');
                 item.className = 'record-card';
-                item.style.borderColor = rec.status === 'retained' ? '#ef4444' : (rec.status === 'completed' ? '#ec4899' : '#f59e0b');
+                const normalizedStatus = normalizeStatus(rec.status);
+                item.style.borderColor = normalizedStatus === 'retained' ? '#ef4444' : (normalizedStatus === 'condom' ? '#38bdf8' : (normalizedStatus === 'raw' ? '#ec4899' : '#f59e0b'));
 
                 const locationDisplay = rec.note ? `${rec.location} · ${rec.note}` : rec.location;
 
@@ -2033,7 +3142,7 @@
             document.getElementById('editId').value = '';
             document.getElementById('inputDate').value = activeDateStr;
             document.getElementById('inputName').value = '';
-            document.getElementById('inputStatus').value = 'completed';
+            document.getElementById('inputStatus').value = 'raw';
             document.getElementById('locationSelect').value = '台南市';
             document.getElementById('inputCustomLocation').value = '';
             document.getElementById('inputCustomLocation').style.display = 'none';
@@ -2063,7 +3172,7 @@
             
             document.getElementById('inputName').value = rawName;
             document.getElementById('inputHour').value = rec.hour;
-            document.getElementById('inputStatus').value = rec.status;
+            document.getElementById('inputStatus').value = normalizeStatus(rec.status);
             document.getElementById('inputNote').value = rec.note || "";
 
             const defaultLocs = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '基隆市', '新竹縣市', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '嘉義縣市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎金馬離島'];
@@ -2102,7 +3211,7 @@
 
             document.getElementById('inputName').value = rawName;
             document.getElementById('inputHour').value = rec.hour;
-            document.getElementById('inputStatus').value = rec.status;
+            document.getElementById('inputStatus').value = normalizeStatus(rec.status);
             document.getElementById('inputNote').value = rec.note || "";
 
             const defaultLocs = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '基隆市', '新竹縣市', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '嘉義縣市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎金馬離島'];
@@ -2147,7 +3256,7 @@
             const recordDate = document.getElementById('inputDate').value || activeDateStr;
             const finalName = autoApproveRoyalTitle(document.getElementById('inputName').value);
             const hour = parseInt(document.getElementById('inputHour').value);
-            const status = document.getElementById('inputStatus').value;
+            const status = normalizeStatus(document.getElementById('inputStatus').value);
             const locSelect = document.getElementById('locationSelect').value;
             const finalLocation = (locSelect === 'custom') ? document.getElementById('inputCustomLocation').value.trim() : locSelect;
             const note = document.getElementById('inputNote').value.trim();
@@ -2262,8 +3371,9 @@
             return {
                 records: records,
                 menstruation: menstruationRecords,
+                monthBackgrounds: monthBackgrounds,
                 exportedAt: new Date().toISOString(),
-                fileType: "royal_spring_sleep_archive_v5"
+                fileType: "royal_spring_sleep_archive_v19"
             };
         }
 
@@ -2272,39 +3382,63 @@
             return `春宵密存備份_${today}.json`;
         }
 
-        function exportArchive() {
-            // 合併承恩紀錄與葵水紀錄導出
+        function getArchiveJsonText() {
+            return JSON.stringify(buildArchiveObject(), null, 2);
+        }
+
+        function createArchiveFile() {
             const fileName = getArchiveFileName();
-            const archiveObj = buildArchiveObject();
-            const jsonText = JSON.stringify(archiveObj, null, 2);
+            const jsonText = getArchiveJsonText();
 
+            // 加入 UTF-8 BOM，讓部分檔案預覽器能正確辨識中文
+            const blob = new Blob(["\ufeff", jsonText], { type: "application/json;charset=utf-8" });
+            return new File([blob], fileName, { type: "application/json" });
+        }
+
+        async function exportArchive() {
+            const file = createArchiveFile();
+
+            // iPhone / iPad Safari：優先使用分享選單，這樣可選「儲存到檔案」
             try {
-                // iPhone / Safari 對 data:text/json 有時不會真的產生檔案；
-                // Blob + ObjectURL 的下載成功率較高。
-                const blob = new Blob([jsonText], { type: "application/json;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
+                if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                    await navigator.share({
+                        files: [file],
+                        title: "春宵密存備份",
+                        text: "請選擇「儲存到檔案」保存 JSON 備份。"
+                    });
+                    showToast("已開啟分享選單，請選「儲存到檔案」保存備份");
+                    return;
+                }
+            } catch (err) {
+                console.log("分享式匯出取消或失敗：", err);
+            }
 
-                const dlAnchorElem = document.createElement('a');
-                dlAnchorElem.href = url;
-                dlAnchorElem.download = fileName;
-                dlAnchorElem.style.display = 'none';
-                document.body.appendChild(dlAnchorElem);
-                dlAnchorElem.click();
+            // 不支援分享檔案時，退回傳統下載
+            try {
+                const blob = new Blob(["\ufeff", getArchiveJsonText()], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                a.rel = "noopener";
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
 
                 setTimeout(() => {
-                    document.body.removeChild(dlAnchorElem);
+                    document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                }, 500);
+                }, 800);
 
-                showToast(`已嘗試導出：${fileName}。若找不到，請用下方「顯示備份文字」。`);
+                showToast(`已嘗試下載：${file.name}。若跳預覽頁，請按分享 → 儲存到檔案`);
             } catch (err) {
                 showBackupText();
-                showToast("手機未允許下載，已改用備份文字模式");
+                showToast("無法直接匯出檔案，已改用備份文字模式");
             }
         }
 
         function showBackupText() {
-            const jsonText = JSON.stringify(buildArchiveObject(), null, 2);
+            const jsonText = getArchiveJsonText();
             const area = document.getElementById('backupTextArea');
             area.value = jsonText;
             document.getElementById('backupTextModal').classList.add('active');
@@ -2335,6 +3469,24 @@
             }
         }
 
+        async function shareBackupTextAsFile() {
+            try {
+                const file = createArchiveFile();
+                if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                    await navigator.share({
+                        files: [file],
+                        title: "春宵密存備份",
+                        text: "請選擇「儲存到檔案」保存 JSON 備份。"
+                    });
+                    showToast("已開啟分享選單，請選「儲存到檔案」");
+                    return;
+                }
+                showToast("此瀏覽器不支援直接分享檔案，請改用複製備份文字");
+            } catch(e) {
+                showToast("分享檔案失敗，請改用複製備份文字");
+            }
+        }
+
         function importArchive(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -2351,6 +3503,11 @@
                     } else if (imported.records) {
                         records = Array.isArray(imported.records) ? imported.records : [];
                         menstruationRecords = Array.isArray(imported.menstruation) ? imported.menstruation : [];
+                        if (Array.isArray(imported.monthBackgrounds)) {
+                            monthBackgrounds = imported.monthBackgrounds.slice(0, 12);
+                            while (monthBackgrounds.length < 12) monthBackgrounds.push("");
+                            localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(monthBackgrounds));
+                        }
                         localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
                         localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
                     } else {
@@ -2362,6 +3519,8 @@
                     renderCalendar();
                     updateStatistics();
                     renderMenstruationList();
+                    renderBackgroundManager();
+                    applyMonthBackground();
                 } catch(err) {
                     showToast("❗️ 檔案損毀，無法破解密冊");
                 }
@@ -2419,9 +3578,8 @@
         }
     </script>
 
-
     <script>
-        console.log('妃嬪侍寢春宵錄 GitHub 更新檔 v11：縮圖邊緣相近色背景 + 新 App icon');
+        console.log('妃嬪侍寢春宵錄 GitHub PWA v19');
     </script>
 
 </body>
