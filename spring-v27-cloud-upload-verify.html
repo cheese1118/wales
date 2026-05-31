@@ -1,0 +1,4240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA / iPhone 主畫面設定：icon 直接放根目錄 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#12051c">
+    <meta name="application-name" content="春宵錄">
+    <meta name="apple-mobile-web-app-title" content="春宵錄">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" sizes="152x152" href="./icon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+
+<title>春宵錄 Firebase 雲端同步版 v27｜上傳驗證版</title>
+    <style>
+        /* --- 核心皇家古風配色與背景 --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            /* 融合玫瑰桃紅、媚紫與幽黑，營造深夜香閨氛圍 */
+            background: radial-gradient(circle at 20% 30%, rgba(219, 39, 119, 0.18), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(136, 19, 55, 0.25), transparent 50%),
+                        linear-gradient(135deg, #0c0111 0%, #030005 100%);
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* --- 浪漫情慾動態落花畫布 --- */
+        #springNightCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* --- 暖帳紅燭呼吸背景 --- */
+        .candle-glow-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 50% 40%, rgba(244, 63, 94, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 1;
+            animation: candleFlicker 6s infinite alternate ease-in-out;
+        }
+
+        @keyframes candleFlicker {
+            0% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.05) translate(1px, -1px); }
+            100% { opacity: 0.8; transform: scale(0.95) translate(-1px, 1px); }
+        }
+
+        /* --- 磨砂玻璃擬態面板 --- */
+        .glass-panel {
+            background: rgba(18, 5, 28, 0.91); /* 加深底色突顯粉金對比 */
+            backdrop-filter: blur(35px);
+            -webkit-backdrop-filter: blur(35px);
+            border: 1.5px solid rgba(212, 175, 55, 0.45);
+            box-shadow: 0 30px 65px rgba(0, 0, 0, 0.9), 
+                        inset 0 0 30px rgba(219, 39, 119, 0.15); /* 內部粉暈 */
+            border-radius: 28px;
+            width: 100%;
+            max-width: 680px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 2; /* 浮於落花上方 */
+        }
+
+        .glow-1 {
+            position: absolute;
+            top: -150px;
+            right: -150px;
+            width: 380px;
+            height: 380px;
+            background: rgba(219, 39, 119, 0.28); /* 增強亮粉紅光 */
+            border-radius: 50%;
+            filter: blur(100px);
+            pointer-events: none;
+        }
+
+        .glow-2 {
+            position: absolute;
+            bottom: -150px;
+            left: -150px;
+            width: 380px;
+            height: 380px;
+            background: rgba(157, 23, 77, 0.22); /* 玫瑰紫紅光 */
+            border-radius: 50%;
+            filter: blur(100px);
+            pointer-events: none;
+        }
+
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            gap: 12px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .system-subtitle {
+            font-size: 11px;
+            font-weight: bold;
+            color: #f472b6; 
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(244, 114, 182, 0.5);
+        }
+
+        .system-title {
+            font-size: 32px; 
+            font-weight: 900;
+            color: #ffffff;
+            background: linear-gradient(to right, #ffffff 10%, #fbcfe8 40%, #f472b6 70%, #fef08a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 5px;
+            text-shadow: 0 4px 20px rgba(219, 39, 119, 0.5);
+        }
+
+        /* 導覽與分頁切換 */
+        .royal-tabs {
+            display: flex;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 18px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            flex-wrap: wrap;
+        }
+
+        .royal-tab-btn {
+            flex: 1;
+            min-width: 80px;
+            background: none;
+            border: none;
+            color: #f3f4f6;
+            opacity: 0.6;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 10px 4px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .royal-tab-btn.active {
+            opacity: 1;
+            background: linear-gradient(135deg, rgba(219, 39, 119, 0.45) 0%, rgba(180, 83, 9, 0.35) 100%);
+            color: #fef08a;
+            box-shadow: inset 0 0 12px rgba(219, 39, 119, 0.3);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            color: #fef08a;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:active {
+            background: rgba(219, 39, 119, 0.3);
+            transform: scale(0.92);
+        }
+
+        .month-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fef08a;
+            letter-spacing: 2px;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            text-shadow: 0 0 10px rgba(254, 240, 138, 0.3);
+        }
+
+        .weekdays-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: rgba(212, 175, 55, 0.9);
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .day-cell {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            aspect-ratio: 1 / 1.15;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-start;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            width: 100%;
+        }
+
+        .day-cell:hover {
+            background: rgba(219, 39, 119, 0.1);
+            border-color: rgba(212, 175, 55, 0.45);
+            box-shadow: 0 0 8px rgba(219, 39, 119, 0.2);
+        }
+
+        .day-cell:active {
+            background: rgba(219, 39, 119, 0.25);
+            border-color: rgba(212, 175, 55, 0.6);
+            transform: scale(0.95);
+        }
+
+        .day-cell.today {
+            border: 1.8px solid #fbbf24;
+            background: rgba(251, 191, 36, 0.09);
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
+        }
+
+        .day-number {
+            font-size: 14px;
+            font-weight: bold;
+            font-family: monospace;
+            color: #cbd5e1;
+        }
+
+        .today .day-number {
+            color: #fbbf24;
+            text-shadow: 0 0 4px rgba(251, 191, 36, 0.4);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            box-shadow: 0 0 6px rgba(0,0,0,0.5);
+        }
+        .dot-pending { background-color: #f59e0b; } 
+        .dot-completed { background-color: #ec4899; } 
+        .dot-retained { background-color: #ef4444; animation: pulse 1.2s infinite; } 
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.5); }
+            50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.5); }
+            100% { transform: scale(0.9); opacity: 0.6; box-shadow: 0 0 0 0px rgba(239, 68, 68, 0px); }
+        }
+
+        .avatar-list {
+            display: flex;
+            gap: 3px;
+            width: 100%;
+            overflow: hidden;
+            height: 24px;
+            align-items: center;
+        }
+
+        .micro-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: center;
+            border: 1.5px solid rgba(212, 175, 55, 0.6);
+            background: #1a0c2a;
+        }
+
+        .more-indicator {
+            font-size: 10px;
+            color: #f472b6;
+            font-weight: bold;
+        }
+
+        .legend {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 11px;
+            color: #cbd5e1;
+            position: relative;
+            z-index: 2;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* --- 皇帝專屬數據與設定面板 --- */
+        .analytics-panel {
+            display: none;
+            position: relative;
+            z-index: 2;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 0 15px rgba(219, 39, 119, 0.05);
+        }
+
+        .section-title {
+            font-size: 15px;
+            color: #fef08a;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 3px solid #db2777;
+            padding-left: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ec4899;
+            font-family: monospace;
+            text-shadow: 0 0 8px rgba(236,72,153,0.4);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .leaderboard-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .leaderboard-rank {
+            font-weight: bold;
+            color: #fef08a;
+            font-family: monospace;
+            width: 20px;
+        }
+
+        /* --- 彈出式密錄對話框 --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 2, 18, 0.91); /* 情慾暗底 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-container {
+            background: rgba(24, 7, 36, 0.98);
+            border: 1.5px solid rgba(212, 175, 55, 0.45);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 520px;
+            padding: 24px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 25px 55px rgba(0,0,0,0.95),
+                        inset 0 0 20px rgba(219, 39, 119, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .record-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+            border-left: 6px solid #db2777; 
+            transition: transform 0.2s;
+        }
+
+        .record-card:hover {
+            transform: scale(1.01);
+            background: rgba(219, 39, 119, 0.05);
+        }
+
+        .record-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .record-avatar {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: center;
+            border: 2px solid rgba(212, 175, 55, 0.5);
+            box-shadow: 0 0 0 3px rgba(251, 207, 232, 0.08),
+                        0 5px 16px rgba(0, 0, 0, 0.45);
+            background: #1a0c2a;
+            cursor: zoom-in;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .record-avatar:hover {
+            transform: scale(1.06);
+            box-shadow: 0 0 0 3px rgba(251, 207, 232, 0.16),
+                        0 8px 22px rgba(219, 39, 119, 0.45);
+        }
+
+        /* 縮圖柔霧邊界：避免照片矩形邊緣在圓形頭像內太銳利 */
+        .record-avatar,
+        .image-preview-large,
+        .micro-avatar {
+            image-rendering: auto;
+        }
+
+        .photo-viewer-img {
+            width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 18px;
+            border: 1.5px solid rgba(212, 175, 55, 0.45);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.65);
+            background: rgba(0,0,0,0.35);
+        }
+
+        .record-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .record-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .record-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fef08a;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+
+        .status-badge {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 50px;
+            border: 1px solid transparent;
+            font-weight: bold;
+        }
+        .badge-pending { border-color: #f59e0b; color: #fef08a; background: rgba(245, 158, 11, 0.15); }
+        .badge-completed { border-color: #ec4899; color: #fbcfe8; background: rgba(236, 72, 153, 0.15); }
+        .badge-retained { border-color: #ef4444; color: #fca5a5; background: rgba(239, 68, 68, 0.2); }
+
+        .record-meta {
+            font-size: 12px;
+            color: #cbd5e1;
+            letter-spacing: 0.5px;
+            line-height: 1.4;
+        }
+
+        .record-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .text-action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #f8fafc;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .text-action-btn:hover {
+            background: rgba(219, 39, 119, 0.25);
+            border-color: rgba(219, 39, 119, 0.5);
+        }
+
+        .form-section {
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+            padding-top: 20px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(25, 10, 38, 0.9);
+            border: 1.5px solid rgba(212, 175, 55, 0.25);
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #fef08a;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: rgba(219, 39, 119, 0.7);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 8px rgba(219, 39, 119, 0.3);
+        }
+
+        .upload-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1.5px dashed rgba(212, 175, 55, 0.3);
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-input-hidden {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .image-preview-large {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: center;
+            border: 3px solid #db2777;
+            box-shadow: 0 0 0 3px rgba(251, 207, 232, 0.14),
+                        0 8px 22px rgba(219, 39, 119, 0.55);
+            background: rgba(24, 7, 36, 0.95);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #db2777 0%, #b45309 100%);
+            color: #ffffff;
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            box-shadow: 0 4px 12px rgba(219, 39, 119, 0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 16px rgba(219, 39, 119, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .confirm-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 210;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .confirm-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .confirm-container {
+            background: rgba(36, 12, 50, 0.98);
+            border: 2px solid #ef4444;
+            border-radius: 20px;
+            padding: 26px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.85);
+        }
+
+        .royal-crop-container {
+            width: 100%;
+            height: 280px;
+            background: #0c0214;
+            border-radius: 20px;
+            border: 1.5px solid rgba(212, 175, 55, 0.25);
+            overflow: hidden;
+            margin-bottom: 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .crop-mask-circle {
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            border: 2px solid #db2777;
+            box-shadow: 0 0 0 9999px rgba(12, 2, 20, 0.75),
+                        0 0 18px rgba(219, 39, 119, 0.45);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #previewCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            cursor: move; /* 指示可以任意移動拖曳 */
+            touch-action: none; /* 防止移動畫像時手機滑動整頁 */
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translate(-50%, 20px);
+            background: rgba(36, 12, 50, 0.95);
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            color: #fef08a;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 250;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .toast.active {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* 葵水(月事)表格排版 */
+        .m-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .m-table th, .m-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .m-table th {
+            color: #fef08a;
+            font-weight: bold;
+        }
+        
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 50px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .badge-mens { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+        .badge-safe { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #a7f3d0; }
+        .badge-fertile { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fde68a; }
+    
+        #monthBgLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(1.02);
+            transition: opacity 0.45s ease, background-image 0.45s ease;
+        }
+        #monthBgLayer.active { opacity: 0.62; }
+        #monthBgLayer::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 50% 35%, rgba(219, 39, 119, 0.10), transparent 48%),
+                linear-gradient(135deg, rgba(3, 0, 5, 0.58) 0%, rgba(12, 1, 17, 0.74) 100%);
+            backdrop-filter: blur(1.5px);
+            -webkit-backdrop-filter: blur(1.5px);
+        }
+        .month-bg-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .month-bg-card {
+            background: rgba(0,0,0,0.22);
+            border: 1px solid rgba(212, 175, 55, 0.18);
+            border-radius: 14px;
+            padding: 8px;
+            min-height: 118px;
+            position: relative;
+            overflow: hidden;
+        }
+        .month-bg-preview {
+            width: 100%;
+            height: 70px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px dashed rgba(212,175,55,0.22);
+            background-size: cover;
+            background-position: center;
+            margin-bottom: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 10px;
+        }
+        .month-bg-title {
+            font-size: 11px;
+            color: #fef08a;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        .month-bg-actions { display: flex; gap: 5px; }
+        .month-bg-mini-btn {
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 5px 3px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .month-bg-mini-btn.primary {
+            color: #fef08a;
+            border-color: rgba(212,175,55,0.3);
+            background: rgba(219,39,119,0.18);
+        }
+        .month-bg-mini-btn.danger { color: #fca5a5; }
+        .swipe-hint {
+            text-align: center;
+            font-size: 11px;
+            color: #fbcfe8;
+            opacity: 0.72;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+        @media (max-width: 520px) {
+            .month-bg-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+    
+        .current-month-bg-control {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(212,175,55,0.22);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .current-month-bg-preview {
+            height: 135px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(212,175,55,0.28);
+            background: rgba(255,255,255,0.04);
+            background-size: cover;
+            background-position: center;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            color:#94a3b8;
+            font-size:12px;
+            margin: 10px 0;
+            overflow:hidden;
+        }
+
+    
+        /* --- v14 開放式月曆：讓月份背景完整呈現 --- */
+        #monthBgLayer.active {
+            opacity: 0.78;
+        }
+
+        .glass-panel {
+            background: rgba(18, 5, 28, 0.58) !important;
+            backdrop-filter: blur(18px) saturate(1.12);
+            -webkit-backdrop-filter: blur(18px) saturate(1.12);
+        }
+
+        #calendarPanel {
+            background: rgba(12, 2, 20, 0.22);
+            border-radius: 22px;
+            padding: 10px 6px 18px;
+        }
+
+        #calendarPanel .weekdays-grid {
+            gap: 0 !important;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.24);
+            margin-bottom: 0;
+            padding: 12px 0 10px;
+            color: rgba(254, 240, 138, 0.92);
+            background: transparent;
+        }
+
+        #calendarPanel .days-grid {
+            gap: 0 !important;
+            grid-auto-rows: minmax(78px, auto);
+            border-top: 1px solid rgba(255,255,255,0.04);
+            background: transparent;
+        }
+
+        #calendarPanel .day-cell {
+            aspect-ratio: auto !important;
+            min-height: 78px;
+            padding: 9px 7px 6px;
+            border-radius: 0 !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.075) !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            align-items: flex-start;
+            justify-content: flex-start;
+            overflow: visible;
+        }
+
+        #calendarPanel .day-cell:nth-child(7n+1),
+        #calendarPanel .day-cell:nth-child(7n) {
+            background: rgba(255,255,255,0.018) !important;
+        }
+
+        #calendarPanel .day-cell:hover {
+            background: rgba(219, 39, 119, 0.10) !important;
+            box-shadow: inset 0 0 18px rgba(219, 39, 119, 0.08) !important;
+        }
+
+        #calendarPanel .day-cell:active {
+            transform: scale(0.98);
+            background: rgba(219, 39, 119, 0.16) !important;
+        }
+
+        #calendarPanel .day-cell.today {
+            background: rgba(251, 191, 36, 0.10) !important;
+            border-bottom-color: rgba(251, 191, 36, 0.32) !important;
+        }
+
+        #calendarPanel .day-number {
+            font-size: 18px;
+            font-weight: 900;
+            color: rgba(248, 250, 252, 0.92);
+            font-family: 'Georgia', 'Times New Roman', "Microsoft JhengHei", serif;
+            line-height: 1;
+            letter-spacing: 0.5px;
+        }
+
+        #calendarPanel .today .day-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            height: 30px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #ef4444 0%, #db2777 100%);
+            color: #ffffff;
+            text-shadow: none;
+            box-shadow: 0 4px 16px rgba(219, 39, 119, 0.38);
+        }
+
+        #calendarPanel .status-dot {
+            width: 8px;
+            height: 8px;
+            top: 10px;
+            right: 10px;
+        }
+
+        #calendarPanel .avatar-list {
+            margin-top: 8px;
+            height: auto;
+            min-height: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+            overflow: visible;
+            gap: 4px;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 24px;
+            height: 24px;
+            border-width: 1.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.38);
+        }
+
+        #calendarPanel .more-indicator {
+            font-size: 11px;
+            color: #f472b6;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.65);
+        }
+
+        #calendarPanel .month-selector {
+            padding: 6px 0 10px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.16);
+        }
+
+        #calendarPanel .month-title {
+            font-size: 26px;
+            letter-spacing: 4px;
+        }
+
+        #calendarPanel .swipe-hint {
+            margin-top: 10px;
+            margin-bottom: 2px;
+            color: rgba(251, 207, 232, 0.82);
+        }
+
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 78px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        @media (max-width: 520px) {
+            body {
+                padding: 8px;
+                align-items: flex-start;
+            }
+
+            .glass-panel {
+                padding: 14px;
+                border-radius: 22px;
+            }
+
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(72px, auto);
+            }
+
+            #calendarPanel .day-cell {
+                min-height: 72px;
+                padding: 8px 5px 5px;
+            }
+
+            #calendarPanel .day-number {
+                font-size: 17px;
+            }
+
+            #calendarPanel .micro-avatar {
+                width: 22px;
+                height: 22px;
+            }
+
+            #calendarPanel .month-title {
+                font-size: 24px;
+                letter-spacing: 3px;
+            }
+        }
+
+    
+        /* --- v15 全版面透明行事曆：移除卡片欄框，讓背景完整呈現 --- */
+        html, body {
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body {
+            padding: 0 !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            background-color: #030005;
+        }
+
+        #monthBgLayer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transform: scale(1.02);
+            transition: opacity 0.45s ease, background-image 0.45s ease;
+        }
+
+        #monthBgLayer.active {
+            opacity: 0.92 !important;
+        }
+
+        #monthBgLayer::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(3,0,5,0.45) 0%, rgba(3,0,5,0.22) 42%, rgba(3,0,5,0.50) 100%),
+                radial-gradient(circle at 50% 20%, rgba(219,39,119,0.10), transparent 52%);
+            backdrop-filter: blur(0.8px);
+            -webkit-backdrop-filter: blur(0.8px);
+        }
+
+        .candle-glow-overlay {
+            background: radial-gradient(circle at 50% 40%, rgba(244, 63, 94, 0.035) 0%, transparent 72%) !important;
+        }
+
+        .glass-panel {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: 100vh;
+            border-radius: 0 !important;
+            border: none !important;
+            padding: 18px 18px 28px !important;
+            background: rgba(8, 1, 14, 0.18) !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        .glow-1, .glow-2 {
+            opacity: 0.45;
+        }
+
+        .header {
+            border-bottom: none !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 8px !important;
+            background: transparent !important;
+        }
+
+        .system-subtitle {
+            color: rgba(251, 207, 232, 0.92) !important;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.85), 0 0 10px rgba(244,114,182,0.48);
+        }
+
+        .system-title {
+            font-size: 34px !important;
+            text-shadow: 0 4px 18px rgba(0,0,0,0.85), 0 0 22px rgba(219,39,119,0.45) !important;
+        }
+
+        .royal-tabs {
+            background: rgba(8, 1, 14, 0.28) !important;
+            border: 1px solid rgba(212,175,55,0.16) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            margin-top: 6px;
+        }
+
+        #calendarPanel {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+        }
+
+        #calendarPanel .month-selector {
+            border: none !important;
+            padding: 18px 0 8px !important;
+            margin-top: 0 !important;
+        }
+
+        #calendarPanel .nav-btn {
+            background: rgba(10, 2, 18, 0.32) !important;
+            border: 1px solid rgba(212,175,55,0.20) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 5px 16px rgba(0,0,0,0.25);
+        }
+
+        #calendarPanel .month-title {
+            font-size: 32px !important;
+            letter-spacing: 5px !important;
+            color: #fef08a !important;
+            text-shadow: 0 4px 14px rgba(0,0,0,0.90), 0 0 12px rgba(254,240,138,0.32);
+        }
+
+        #calendarPanel .swipe-hint {
+            margin: 4px 0 10px !important;
+            color: rgba(251,207,232,0.88) !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+        }
+
+        #calendarPanel .weekdays-grid {
+            gap: 0 !important;
+            padding: 12px 0 8px !important;
+            margin-bottom: 0 !important;
+            border: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.22) !important;
+            background: transparent !important;
+            color: rgba(254,240,138,0.96) !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        }
+
+        #calendarPanel .days-grid {
+            gap: 0 !important;
+            grid-auto-rows: minmax(92px, auto) !important;
+            background: transparent !important;
+            border: none !important;
+        }
+
+        #calendarPanel .day-cell {
+            aspect-ratio: auto !important;
+            min-height: 92px !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 10px 6px 6px !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .day-cell:hover {
+            background: rgba(255,255,255,0.05) !important;
+            box-shadow: none !important;
+        }
+
+        #calendarPanel .day-cell:active {
+            transform: scale(0.985) !important;
+            background: rgba(219,39,119,0.10) !important;
+        }
+
+        #calendarPanel .day-cell.today {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        #calendarPanel .day-number {
+            font-size: 20px !important;
+            font-weight: 900 !important;
+            color: rgba(255,255,255,0.92) !important;
+            font-family: 'Georgia', 'Times New Roman', "Microsoft JhengHei", serif !important;
+            line-height: 1.1 !important;
+            text-align: center;
+            text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7);
+        }
+
+        #calendarPanel .today .day-number {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ef4444 0%, #db2777 100%) !important;
+            color: #ffffff !important;
+            text-shadow: none !important;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.42), 0 0 14px rgba(219,39,119,0.55);
+        }
+
+        #calendarPanel .status-dot {
+            width: 7px !important;
+            height: 7px !important;
+            top: 11px !important;
+            right: 50% !important;
+            transform: translateX(26px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.65);
+        }
+
+        #calendarPanel .avatar-list {
+            width: 100%;
+            height: auto !important;
+            min-height: 24px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 24px !important;
+            height: 24px !important;
+            border: 1.5px solid rgba(212,175,55,0.72) !important;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.62);
+        }
+
+        #calendarPanel .more-indicator {
+            font-size: 11px !important;
+            color: #f472b6 !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+        }
+
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 92px !important;
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .legend {
+            background: rgba(8, 1, 14, 0.22);
+            border: 1px solid rgba(212,175,55,0.14);
+            border-radius: 999px;
+            padding: 8px 10px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            margin-top: 18px !important;
+        }
+
+        @media (max-width: 520px) {
+            .glass-panel {
+                padding: 14px 12px 24px !important;
+            }
+
+            .system-title {
+                font-size: 30px !important;
+                letter-spacing: 3px !important;
+            }
+
+            #calendarPanel .month-title {
+                font-size: 28px !important;
+                letter-spacing: 4px !important;
+            }
+
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(82px, auto) !important;
+            }
+
+            #calendarPanel .day-cell,
+            #calendarPanel .days-grid > div:not(.day-cell) {
+                min-height: 82px !important;
+            }
+
+            #calendarPanel .day-number {
+                font-size: 18px !important;
+            }
+
+            #calendarPanel .micro-avatar {
+                width: 22px !important;
+                height: 22px !important;
+            }
+        }
+
+    
+        /* --- v16 壓縮年月列，讓月曆全貌更容易一頁呈現 --- */
+        #calendarPanel .month-selector {
+            padding: 4px 0 2px !important;
+            margin-top: -4px !important;
+            margin-bottom: 0 !important;
+        }
+
+        #calendarPanel .month-title {
+            font-size: 22px !important;
+            letter-spacing: 3px !important;
+            line-height: 1.1 !important;
+        }
+
+        #calendarPanel .nav-btn {
+            width: 34px !important;
+            height: 34px !important;
+            font-size: 13px !important;
+        }
+
+        #calendarPanel .swipe-hint {
+            margin: 1px 0 2px !important;
+            font-size: 10px !important;
+            line-height: 1.1 !important;
+        }
+
+        #calendarPanel br {
+            display: none !important;
+        }
+
+        #calendarPanel .weekdays-grid {
+            padding: 6px 0 5px !important;
+            font-size: 12px !important;
+        }
+
+        #calendarPanel .days-grid {
+            grid-auto-rows: minmax(68px, auto) !important;
+        }
+
+        #calendarPanel .day-cell,
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 68px !important;
+            padding: 6px 4px 4px !important;
+        }
+
+        #calendarPanel .day-number {
+            font-size: 16px !important;
+            line-height: 1 !important;
+        }
+
+        #calendarPanel .today .day-number {
+            min-width: 28px !important;
+            height: 28px !important;
+            padding: 0 6px !important;
+        }
+
+        #calendarPanel .avatar-list {
+            margin-top: 5px !important;
+            gap: 3px !important;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 19px !important;
+            height: 19px !important;
+        }
+
+        #calendarPanel .status-dot {
+            width: 7px !important;
+            height: 7px !important;
+            top: 7px !important;
+            transform: translateX(22px) !important;
+        }
+
+        .dot-condom { background-color: #38bdf8; }
+        .dot-raw { background-color: #ec4899; }
+
+        .badge-condom {
+            border-color: #38bdf8;
+            color: #bae6fd;
+            background: rgba(56, 189, 248, 0.16);
+        }
+
+        .badge-raw {
+            border-color: #ec4899;
+            color: #fbcfe8;
+            background: rgba(236, 72, 153, 0.15);
+        }
+
+        @media (max-width: 520px) {
+            .header {
+                gap: 8px !important;
+                padding-bottom: 6px !important;
+                margin-bottom: 4px !important;
+            }
+
+            .system-subtitle {
+                font-size: 9px !important;
+                letter-spacing: 3px !important;
+            }
+
+            .system-title {
+                font-size: 26px !important;
+                line-height: 1.08 !important;
+            }
+
+            .royal-tabs {
+                margin-bottom: 8px !important;
+            }
+
+            .royal-tab-btn {
+                padding: 8px 3px !important;
+                font-size: 11px !important;
+            }
+
+            #calendarPanel .month-title {
+                font-size: 21px !important;
+            }
+
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(64px, auto) !important;
+            }
+
+            #calendarPanel .day-cell,
+            #calendarPanel .days-grid > div:not(.day-cell) {
+                min-height: 64px !important;
+            }
+        }
+
+    
+        /* --- v17 放大日曆縮圖，單日多位向下堆疊 --- */
+        body {
+            overflow-y: auto !important;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            min-height: 100vh;
+            padding-bottom: 42px !important;
+        }
+
+        #calendarPanel .days-grid {
+            grid-auto-rows: minmax(118px, auto) !important;
+        }
+
+        #calendarPanel .day-cell,
+        #calendarPanel .days-grid > div:not(.day-cell) {
+            min-height: 118px !important;
+            padding: 7px 3px 8px !important;
+        }
+
+        #calendarPanel .day-cell {
+            align-items: center !important;
+            justify-content: flex-start !important;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .avatar-list {
+            width: 100% !important;
+            margin-top: 7px !important;
+            min-height: 58px !important;
+            height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            flex-wrap: nowrap !important;
+            gap: 5px !important;
+            overflow: visible !important;
+        }
+
+        #calendarPanel .micro-avatar {
+            width: 54px !important;
+            height: 54px !important;
+            min-width: 54px !important;
+            min-height: 54px !important;
+            border-width: 2px !important;
+            border-color: rgba(212, 175, 55, 0.82) !important;
+            box-shadow:
+                0 0 0 2px rgba(24, 7, 36, 0.42),
+                0 5px 14px rgba(0,0,0,0.55),
+                0 0 12px rgba(219,39,119,0.24) !important;
+        }
+
+        #calendarPanel .more-indicator {
+            font-size: 13px !important;
+            line-height: 1 !important;
+            margin-top: 0 !important;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: rgba(24, 7, 36, 0.45);
+            border: 1px solid rgba(236, 72, 153, 0.25);
+        }
+
+        #calendarPanel .day-cell:has(.micro-avatar) {
+            min-height: 136px !important;
+        }
+
+        #calendarPanel .status-dot {
+            top: 8px !important;
+            right: 50% !important;
+            transform: translateX(28px) !important;
+            z-index: 3;
+        }
+
+        .legend {
+            margin-top: 24px !important;
+            margin-bottom: 28px !important;
+        }
+
+        @media (max-width: 520px) {
+            #calendarPanel .days-grid {
+                grid-auto-rows: minmax(108px, auto) !important;
+            }
+
+            #calendarPanel .day-cell,
+            #calendarPanel .days-grid > div:not(.day-cell) {
+                min-height: 108px !important;
+            }
+
+            #calendarPanel .micro-avatar {
+                width: 50px !important;
+                height: 50px !important;
+                min-width: 50px !important;
+                min-height: 50px !important;
+            }
+
+            #calendarPanel .day-cell:has(.micro-avatar) {
+                min-height: 128px !important;
+            }
+
+            #calendarPanel .day-number {
+                font-size: 17px !important;
+            }
+        }
+
+    </style>
+
+    <!-- Firebase v24：V22穩定底版，只新增雲端同步，不改原本匯入/匯出 -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+
+<style id="v24-firebase-css">
+.v24-cloud-card{
+  border:2px solid rgba(56,189,248,.38)!important;
+  background:rgba(8,47,73,.22)!important;
+  border-radius:18px;
+  padding:15px;
+  margin:16px 0;
+  box-shadow:0 0 0 1px rgba(56,189,248,.14),0 10px 24px rgba(0,0,0,.25);
+}
+.v24-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 10px;
+  border-radius:999px;
+  background:rgba(34,197,94,.14);
+  color:#86efac;
+  border:1px solid rgba(34,197,94,.38);
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.v24-cloud-status{
+  padding:10px 12px;
+  border-radius:13px;
+  background:rgba(0,0,0,.28);
+  color:#cbd5e1;
+  line-height:1.55;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-size:12px;
+  margin-top:10px;
+}
+.v24-cloud-status.ok{color:#86efac}
+.v24-cloud-status.bad{color:#fca5a5}
+.v24-cloud-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.v24-cloud-grid{grid-template-columns:1fr 1fr}.v24-cloud-grid .btn{font-size:13px;padding:9px 6px!important}}
+</style>
+
+</head>
+<body>
+
+    <div id="monthBgLayer"></div>
+
+    <!-- 落櫻情色風情動畫畫布 -->
+    <canvas id="springNightCanvas"></canvas>
+    
+    <!-- 紅燭微光呼吸遮罩 -->
+    <div class="candle-glow-overlay"></div>
+
+    <div class="glass-panel">
+        <div class="glow-1"></div>
+        <div class="glow-2"></div>
+
+        <div class="header">
+            <span class="system-subtitle">ROYAL SPRING NIGHT & BEDCHAMBER RECORD</span>
+            <span class="system-title">妃嬪侍寢春宵錄</span>
+            
+            <!-- 天子分頁切換 -->
+            <div class="royal-tabs">
+                <button onclick="switchTab('calendar')" id="tab-calendar" class="royal-tab-btn active">📅 起居日曆</button>
+                <button onclick="switchTab('menstruation')" id="tab-menstruation" class="royal-tab-btn">🩸 葵水避孕</button>
+                <button onclick="switchTab('analytics')" id="tab-analytics" class="royal-tab-btn">📊 敬事房密報</button>
+                <button onclick="switchTab('settings')" id="tab-settings" class="royal-tab-btn">⚙️ 仙丹備份</button>
+            </div>
+        </div>
+
+        <!-- 1. 日曆主面板 -->
+        <div id="calendarPanel" style="animation: fadeIn 0.3s ease;">
+            <div class="month-selector">
+                <button onclick="changeMonth(-1)" class="nav-btn">◀</button>
+                <span id="calendarTitle" class="month-title">2026年 05月</span>
+                <button onclick="changeMonth(1)" class="nav-btn">▶</button>
+            </div>
+            <div class="swipe-hint">⇠ 左右滑動切換月份，縮圖可向下堆疊 ⇢</div>
+            <br>
+            <div class="weekdays-grid">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+            </div>
+
+            <div id="calendarGrid" class="days-grid"></div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-dot" style="background-color: #f59e0b;"></span>
+                    <span>盼帝臨幸 (待寢)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background-color: #38bdf8;"></span>
+                    <span>已賜雲雨 (戴套)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background-color: #ec4899;"></span>
+                    <span>已賜雲雨 (無套)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot" style="background-color: #ef4444;"></span>
+                    <span>恩澤留種 (留精)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 🩸 葵水安全期面板 -->
+        <div id="menstruationPanel" class="analytics-panel">
+            <div class="section-card">
+                <div class="section-title">🩸 登記后妃葵水 (月事)</div>
+                <form id="mensForm" onsubmit="saveMens(event)">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                        <div style="flex: 1; min-width: 140px;">
+                            <label class="form-label">妃嬪姓名</label>
+                            <input type="text" id="mensName" placeholder="如：甄嬛、華妃" required class="form-input" style="padding: 8px 12px;">
+                        </div>
+                        <div style="flex: 1; min-width: 140px;">
+                            <label class="form-label">最後葵水首日</label>
+                            <input type="date" id="mensDate" required class="form-input" style="padding: 8px 12px; font-family: monospace;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+                        <div style="flex: 1; min-width: 140px;">
+                            <label class="form-label">葵水週期 (天)</label>
+                            <input type="number" id="mensCycle" value="28" min="20" max="45" required class="form-input" style="padding: 8px 12px;">
+                        </div>
+                        <div style="flex: 1; min-width: 140px;">
+                            <label class="form-label">行經天數 (天)</label>
+                            <input type="number" id="mensLength" value="5" min="2" max="10" required class="form-input" style="padding: 8px 12px;">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">💾 登錄后妃生理期檔案</button>
+                </form>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">🌸 今日后妃春情狀態 (生理與安全期檢視)</div>
+                <p style="font-size: 11px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.5;">
+                    💡 安全期（桃紅 🟢）難留種宜盡興；易孕期（春情 🔥）適合繁衍子嗣；生理期（葵水 🩸）宜避開。
+                </p>
+                <div style="overflow-x: auto;">
+                    <table class="m-table">
+                        <thead>
+                            <tr>
+                                <th>后妃封號</th>
+                                <th>前次行經首日</th>
+                                <th>今日狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mensListBody">
+                            <!-- JS 動態載入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 敬事房密報(統計)面板 -->
+        <div id="analyticsPanel" class="analytics-panel">
+            <div class="section-card">
+                <div class="section-title">👑 天子臨幸大計</div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div id="statTotal" class="stat-value">0</div>
+                        <div class="stat-label">總承恩次數</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="statConcubines" class="stat-value">0</div>
+                        <div class="stat-label">有名冊妃嬪</div>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div id="statRetained" class="stat-value" style="color:#ef4444;">0</div>
+                        <div class="stat-label">留種恩賜次數</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="statFavoriteLoc" class="stat-value" style="color:#fef08a; font-size:16px; padding-top:6px;">無</div>
+                        <div class="stat-label">最常巡幸宮殿</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">💖 承恩后妃恩寵榜</div>
+                <div id="leaderboardArea" class="leaderboard-list">
+                    <!-- 榜單動態載入 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 備份與管理面板 -->
+        <div id="settingsPanel" class="analytics-panel">
+            <div class="section-card">
+                <div class="section-title">🔮 起居密存封裝</div>
+                <p style="font-size: 13px; color: #cbd5e1; margin-bottom: 16px; line-height: 1.5;">
+                    皇上，此春宵錄完全保存在您的御用瀏覽器中。為防起居痕跡意外抹去，請定期將密冊存檔導出保存。<br>
+                    <span style="color:#fef08a;">匯出檔名格式：</span><strong style="color:#f472b6;">春宵密存備份_日期.json</strong><br>
+                    <span style="color:#94a3b8;">iPhone 會優先跳出分享選單，請選「儲存到檔案」。若仍失敗，再使用「顯示備份文字 / 一鍵複製」。</span>
+                </p>
+                <div style="display: flex; gap: 12px; margin-bottom: 10px;">
+                    <button onclick="exportArchive()" class="btn btn-primary" style="flex: 1; padding: 10px;">💾 匯出JSON / 儲存到檔案</button>
+                    <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary" style="flex: 1; padding: 10px;">📂 導入春宵密存</button>
+                </div>
+                <button onclick="showBackupText()" class="btn btn-secondary" style="width: 100%; padding: 10px; margin-bottom: 16px; color:#fef08a;">
+                    📋 匯出失敗？顯示備份文字 / 儲存JSON
+                </button>
+                <input type="file" id="importFile" accept=".json" onchange="importArchive(event)" style="display: none;">
+
+                <div class="v24-cloud-card" id="v24CloudCard">
+                    <div class="v24-badge">✅ 目前檔案版本：v27｜雲端上傳驗證版</div>
+                    <div class="section-title">☁️ Firebase 雲端同步 v27</div>
+                    <p style="font-size:12px;color:#cbd5e1;line-height:1.6;margin:8px 0 10px;">
+                        這版以 V22 為底，<strong style="color:#fef08a;">完全不改原本匯出 / 導入 JSON</strong>。<br>
+                        Firebase 只負責額外雲端備份：
+                        <br><code style="color:#fef08a;">users / 你的UID / springArchive / main</code>
+                    </p>
+                    <div id="v24LoginPill" class="cloud-pill" style="margin-bottom:10px;">尚未登入 Firebase</div>
+                    <div class="v24-cloud-grid">
+                        <button type="button" onclick="v24FirebaseLogin()" class="btn btn-primary" style="padding:10px;">Google 登入</button>
+                        <button type="button" onclick="v24FirebaseLogout()" class="btn btn-secondary" style="padding:10px;">登出</button>
+                        <button type="button" onclick="v24CloudUpload()" class="btn btn-primary" style="padding:10px;background:linear-gradient(135deg,#0284c7,#38bdf8);">立即上傳雲端</button>
+                        <button type="button" onclick="v24CloudRestore()" class="btn btn-secondary" style="padding:10px;">從雲端還原</button>
+                        <button type="button" onclick="v27CheckCloud()" class="btn btn-secondary" style="padding:10px;grid-column:1 / -1;">查詢雲端目前資料</button>
+                    </div>
+                    <div id="v24CloudStatus" class="v24-cloud-status">v27 已載入：立即上傳會寫入後讀回驗證，避免雲端舊資料覆蓋。</div>
+                    <div id="v27CloudVerifyStatus" class="v24-cloud-status" style="margin-top:10px;border:1px solid rgba(56,189,248,.25);">
+                        v27 驗證狀態：尚未執行雲端上傳。
+                    </div>
+
+                </div>
+
+                
+                <div class="section-card" style="margin-top: 16px;">
+                    <div class="section-title">🖼️ 十二月份專屬背景圖</div>
+                    <p style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 10px;">
+                        可為 1～12 月各設定一張背景圖。<strong style="color:#fef08a;">目前日曆停在哪個月份，就會套用那個月份的背景。</strong><br><span style="color:#94a3b8;">v18 背景固定修正版：月份切換以每月 1 號為基準，避免連續兩個月同圖或返回時跑掉。</span><br>
+                        若你只是選了其他月份的圖，但日曆還停在本月，看起來就不會變；可用下方「套用到目前月份」快速設定。
+                    </p>
+
+                    <div class="current-month-bg-control">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <div>
+                                <div style="font-size:13px; color:#fef08a; font-weight:bold;">目前日曆月份背景</div>
+                                <div id="currentMonthBgLabel" style="font-size:11px; color:#cbd5e1; margin-top:4px;">目前月份</div>
+                            </div>
+                            <button onclick="document.getElementById('currentMonthBgInput').click()" class="btn btn-primary" style="padding:8px 12px; font-size:12px;">套用到目前月份</button>
+                        </div>
+                        <input type="file" id="currentMonthBgInput" accept="image/*" onchange="handleCurrentMonthBackgroundUpload(event)" style="display:none;">
+                        <div id="currentMonthBgPreview" class="current-month-bg-preview">目前月份尚未設定背景</div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <button onclick="document.getElementById('bulkMonthBgInput').click()" class="btn btn-primary" style="flex:1; padding:9px;">一次匯入最多12張</button>
+                        <button onclick="clearAllMonthBackgrounds()" class="btn btn-secondary" style="flex:1; padding:9px;">清空背景圖</button>
+                    </div>
+                    <input type="file" id="bulkMonthBgInput" accept="image/*" multiple onchange="handleBulkMonthBackgroundUpload(event)" style="display:none;">
+                    <div id="monthBgGrid" class="month-bg-grid"></div>
+                </div>
+
+                <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 16px;">
+                    <button onclick="clearAllData()" class="btn" style="width: 100%; background: #ef4444; color: #fff; font-size: 13px; padding: 8px;">⚠️ 封宮抹去全冊檔案</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 起居密錄彈出視窗 -->
+    <div id="detailModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div>
+                    <span style="font-size: 10px; color: #db2777; font-weight: bold; display: block; letter-spacing: 1px;">SPRING NIGHT CHAMBER</span>
+                    <h3 id="modalDateTitle" style="font-size: 20px; font-weight: bold; color: #fff; font-family: monospace;">2026-05-17</h3>
+                </div>
+                <button onclick="closeModal()" class="close-btn">&times;</button>
+            </div>
+
+            <div id="modalRecordsArea" style="margin-bottom: 20px;"></div>
+
+            <!-- 該日全後宮安全期狀態檢視區 -->
+            <div id="modalMensCheckArea" style="margin-top: 15px; border-top: 1px dashed rgba(212, 175, 55, 0.25); padding-top: 15px;">
+                <span style="font-size: 11px; color: #db2777; font-weight: bold; display: block; margin-bottom: 8px;">📜 當日全後宮葵水安全期檢視：</span>
+                <div id="modalMensList" style="font-size: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+            </div>
+
+            <!-- 表單區 -->
+            <div id="formSection" class="form-section" style="display: none;">
+                <h4 id="formTitle" style="font-size: 14px; color: #fef08a; font-weight: bold; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1.5px solid rgba(212, 175, 55, 0.2); padding-bottom: 8px;">御筆欽定翻牌侍寢</h4>
+                <form id="recordForm" onsubmit="saveRecord(event)">
+                    <input type="hidden" id="editId">
+
+                    <div class="form-group">
+                        <label class="form-label">侍寢日期</label>
+                        <input type="date" id="inputDate" required class="form-input" style="height: 48px; font-family: monospace;">
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                        <div style="flex: 1;">
+                            <label class="form-label">雲雨時辰</label>
+                            <select id="inputHour" class="form-input" style="height: 48px; background: rgba(30,15,45,0.95);"></select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="form-label">恩澤狀態</label>
+                            <select id="inputStatus" class="form-input" style="height: 48px; background: rgba(30,15,45,0.95);">
+                                <option value="pending">盼帝臨幸 (待寢)</option>
+                                <option value="condom">已賜雲雨 (戴套)</option>
+                                <option value="raw">已賜雲雨 (無套)</option>
+                                <option value="retained">恩澤留種 (留精)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">妃嬪封號 (自動加封「娘娘」)</label>
+                        <input type="text" id="inputName" placeholder="如：甜甜、甄嬛、華妃" required class="form-input">
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                        <div style="flex: 1;">
+                            <label class="form-label">巡幸行宮縣市</label>
+                            <select id="locationSelect" onchange="toggleCustomLocation()" class="form-input" style="height: 48px; background: rgba(30,15,45,0.95);">
+                                <option value="台北市">台北市</option>
+                                <option value="新北市">新北市</option>
+                                <option value="桃園市">桃園市</option>
+                                <option value="台中市">台中市</option>
+                                <option value="台南市" selected>台南市</option>
+                                <option value="高雄市">高雄市</option>
+                                <option value="基隆市">基隆市</option>
+                                <option value="新竹縣市">新竹縣市</option>
+                                <option value="苗栗縣">苗栗縣</option>
+                                <option value="彰化縣">彰化縣</option>
+                                <option value="南投縣">南投縣</option>
+                                <option value="雲林縣">雲林縣</option>
+                                <option value="嘉義縣市">嘉義縣市</option>
+                                <option value="屏東縣">屏東縣</option>
+                                <option value="宜蘭縣">宜蘭縣</option>
+                                <option value="花蓮縣">花蓮縣</option>
+                                <option value="台東縣">台東縣</option>
+                                <option value="澎金馬離島">澎金馬離島</option>
+                                <option value="custom">自填新行宮...</option>
+                            </select>
+                            <input type="text" id="inputCustomLocation" placeholder="自填縣市" class="form-input" style="display: none; margin-top: 8px; height: 48px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="form-label">行宮細部備註 (如：永康)</label>
+                            <input type="text" id="inputNote" placeholder="如：永康、鳳山、西門町" class="form-input" style="height: 48px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">上傳妃嬪嬌嬈真容 (或不改維持原樣)</label>
+                        <div class="upload-card">
+                            <input type="file" id="inputImage" accept="image/*" onchange="handleImageUpload(event)" class="upload-input-hidden">
+                            <div id="imagePlaceholder">
+                                <span style="font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 6px; font-weight: 500;">點擊描繪或上傳畫像</span>
+                                <span style="font-size: 10px; color: #f472b6; text-transform: uppercase;">(完全免網路，支援原生防截斷定位)</span>
+                            </div>
+                            <div id="imagePreviewContainer" style="display: none; flex-direction: column; align-items: center; gap: 10px;">
+                                <img id="imagePreview" src="" class="image-preview-large">
+                                <span style="font-size: 12px; color: #ec4899; font-weight: bold;">絕美真容已收入春宵錄</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="button" onclick="cancelForm()" class="btn btn-secondary" style="flex: 1;">罷手</button>
+                        <button type="submit" id="submitBtn" class="btn btn-primary" style="flex: 2;">奉旨登錄春宵冊</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="modalActions" style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 14px; margin-top: 14px;">
+                <button id="addBtn" onclick="showAddForm()" class="btn btn-primary" style="padding: 10px 20px; font-size: 14px;">+ 翻牌召幸妃嬪</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 原生手勢操控裁切彈出視窗 -->
+    <div id="cropModal" class="modal-overlay" style="z-index: 300;">
+        <div class="modal-container" style="max-width: 450px; width: 95%;">
+            <div class="modal-header">
+                <div>
+                    <span style="font-size: 10px; color: #db2777; font-weight: bold; display: block; letter-spacing: 1px;">PORTRAIT CROPPER</span>
+                    <h3 style="font-size: 20px; font-weight: bold; color: #fff;">調校娘娘絕美真容</h3>
+                </div>
+            </div>
+            
+            <div class="royal-crop-container">
+                <div class="crop-mask-circle"></div>
+                <canvas id="previewCanvas"></canvas>
+            </div>
+
+            <p style="font-size: 11px; color: #cbd5e1; text-align: center; margin-bottom: 16px; line-height: 1.5;">
+                ✨ 皇上，可直接在放大的圓圈中對畫像進行<strong style="color: #fef08a;">【單指/滑鼠拖曳移動】</strong>與<strong style="color: #fef08a;">【雙指捏合/滑鼠滾輪縮放】</strong>調校。<br>
+                系統只會擷取圓圈內畫面；若有留白或越界，會<strong style="color: #f472b6;">自動以照片邊緣擴散柔焦</strong>填滿圓框。
+            </p>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="button" onclick="cancelCrop()" class="btn btn-secondary" style="flex: 1;">罷手</button>
+                <button type="button" onclick="confirmCrop()" class="btn btn-primary" style="flex: 1;">定案裁剪</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 皇家御旨確認彈窗 -->
+    <div id="confirmModal" class="confirm-overlay">
+        <div class="confirm-container">
+            <h4 style="font-size: 18px; font-weight: bold; color: #ef4444; margin-bottom: 12px; letter-spacing: 1px;">【 敬事房御旨確認 】</h4>
+            <p id="confirmMessage" style="font-size: 14px; color: #cbd5e1; margin-bottom: 24px; line-height: 1.6;"></p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="confirmCancelBtn" class="btn btn-secondary" style="flex: 1;">罷手暫緩</button>
+                <button id="confirmOkBtn" class="btn btn-primary" style="flex: 1; background: #ef4444; border-color: rgba(239,68,68,0.4);">遵旨抹去</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 妃嬪原圖放大檢視彈窗 -->
+    <div id="photoViewerModal" class="modal-overlay" style="z-index: 320;">
+        <div class="modal-container" style="max-width: 620px; width: 96%; padding: 18px;">
+            <div class="modal-header" style="margin-bottom: 14px;">
+                <div>
+                    <span style="font-size: 10px; color: #db2777; font-weight: bold; display: block; letter-spacing: 1px;">ROYAL PORTRAIT VIEWER</span>
+                    <h3 id="photoViewerTitle" style="font-size: 18px; font-weight: bold; color: #fff;">妃嬪真容原圖</h3>
+                </div>
+                <button onclick="closePhotoViewer()" class="close-btn">&times;</button>
+            </div>
+            <img id="photoViewerImg" src="" class="photo-viewer-img">
+            <p style="font-size: 11px; color: #cbd5e1; text-align:center; margin-top: 10px; line-height: 1.5;">
+                點擊卡片頭像可查看原始上傳照片；舊版資料若沒有原圖，會顯示目前保存的裁切圖。
+            </p>
+        </div>
+    </div>
+
+    <!-- 備份文字彈窗：iPhone 若無法真正下載，可直接複製保存 -->
+    <div id="backupTextModal" class="confirm-overlay" style="z-index: 260;">
+        <div class="confirm-container" style="max-width: 520px; border-color: rgba(212,175,55,0.7); text-align: left;">
+            <h4 style="font-size: 18px; font-weight: bold; color: #fef08a; margin-bottom: 10px; letter-spacing: 1px; text-align:center;">【 春宵密存備份文字 】</h4>
+            <p style="font-size: 12px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.6;">
+                若手機沒有出現儲存選單，請按「儲存成JSON檔」再選「儲存到檔案」；若仍失敗，可按「複製文字」貼到備忘錄或文字檔保存。之後也可用「導入春宵密存」選 JSON 檔；若仍找不到檔案，可把這段文字貼回來，我可幫你還原。
+            </p>
+            <textarea id="backupTextArea" readonly class="form-input" style="width:100%; height:260px; font-size:11px; line-height:1.4; color:#fef08a; font-family:monospace; resize:none;"></textarea>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 14px;">
+                <button onclick="shareBackupTextAsFile()" class="btn btn-primary" style="flex: 1;">儲存成JSON檔</button>
+                <button onclick="copyBackupText()" class="btn btn-secondary" style="flex: 1;">複製文字</button>
+                <button onclick="closeBackupTextModal()" class="btn btn-secondary" style="flex: 0.7;">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">起居恩澤冊已更新</div>
+
+    <script>
+        const defaultAvatar = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%233e144a"/><stop offset="100%" stop-color="%236b21a8"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(%23g)"/><path d="M50 24c8 0 14 6 14 14s-6 12-14 12-14-4-14-12 6-14 14-14zm0 28c16 0 30 10 30 22v6H20v-6c0-12 14-22 30-22z" fill="%23db2777"/></svg>`;
+
+
+        /* --- v26：安全渲染圖片與文字，避免新翻牌縮圖 HTML 亂碼 --- */
+        function escapeHTML(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function safeImageSrc(value) {
+            const src = String(value || "").trim();
+            if (
+                src.startsWith("data:image/") ||
+                src.startsWith("blob:") ||
+                src.startsWith("https://") ||
+                src.startsWith("http://")
+            ) {
+                return src;
+            }
+            return defaultAvatar;
+        }
+
+        function safeText(value, fallback = "") {
+            const text = String(value ?? "").trim();
+            return text || fallback;
+        }
+
+
+        let records = [];
+        let menstruationRecords = []; // 葵水(月事)紀錄
+        let currentDate = new Date();
+        let activeDateStr = "";
+        let tempBase64Image = "";
+        let tempOriginalImage = ""; // 保存未裁切原圖，用於點照片放大查看
+        let monthBackgrounds = new Array(12).fill(""); // 1～12月專屬背景圖
+        let onConfirmAction = null; 
+
+        // 原生手勢與互動式裁剪控制狀態
+        let sourceImg = new Image();
+        let currentZoom = 1.0;
+        let offsetX = 0; // 手勢拖曳 X 位移
+        let offsetY = 0; // 手勢拖曳 Y 位移
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let initialPinchDistance = 0;
+        let initialZoom = 1.0;
+
+        window.onload = function() {
+            // 設定今日日期預設給葵水首日
+            document.getElementById('mensDate').value = new Date().toISOString().split('T')[0];
+
+            // 時辰下拉框生成
+            const hourSelect = document.getElementById('inputHour');
+            for (let i = 0; i < 24; i++) {
+                const nextHour = (i + 1) % 24;
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.innerText = `${String(i).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
+                if (i === 21) opt.selected = true;
+                hourSelect.appendChild(opt);
+            }
+
+            // 初始化與讀取承恩起居錄
+            const sampleRecord = {
+                id: "sample_sweet",
+                date: "2026-05-17",
+                hour: 21,
+                name: "甜甜娘娘",
+                status: "completed",
+                location: "台南市",
+                note: "永康",
+                image: defaultAvatar
+            };
+
+            const saved = localStorage.getItem('royal_spring_sleep_v2');
+            if (saved) {
+                try { records = JSON.parse(saved); } catch(e) { records = [sampleRecord]; }
+            } else {
+                records = [sampleRecord];
+                localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
+            persistRoyalState('records');
+            }
+
+            // 初始化與讀取葵水生理期紀錄
+            const sampleMens = [
+                { id: "mens_1", name: "甜甜娘娘", lastStartDate: "2026-05-15", cycleLength: 28, periodLength: 5 },
+                { id: "mens_2", name: "甄嬛娘娘", lastStartDate: "2026-05-02", cycleLength: 30, periodLength: 6 }
+            ];
+            const savedMens = localStorage.getItem('royal_menstruation_v2');
+            if (savedMens) {
+                try { menstruationRecords = JSON.parse(savedMens); } catch(e) { menstruationRecords = sampleMens; }
+            } else {
+                menstruationRecords = sampleMens;
+                localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
+            persistRoyalState('menstruation');
+            }
+
+            const savedMonthBgs = localStorage.getItem('royal_month_backgrounds_v12');
+            if (savedMonthBgs) {
+                try {
+                    const parsed = JSON.parse(savedMonthBgs);
+                    if (Array.isArray(parsed)) monthBackgrounds = parsed.slice(0, 12);
+                    while (monthBackgrounds.length < 12) monthBackgrounds.push("");
+                } catch(e) {
+                    monthBackgrounds = new Array(12).fill("");
+                }
+            }
+
+            renderCalendar();
+            updateStatistics();
+            renderMenstruationList();
+            renderBackgroundManager();
+            applyMonthBackground();
+            initSpringNightCanvas(); // 啟動春宵桃花動態落瓣
+            initCropCanvasEvents();  // 初始化手勢/滑鼠操作監聽
+            initMonthSwipe();        // 初始化左右滑動切換月份
+        };
+
+        /* --- 🌸 春宵情慾動態落花/光塵物理引擎 --- */
+        function initSpringNightCanvas() {
+            const canvas = document.getElementById('springNightCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width = (canvas.width = window.innerWidth);
+            let height = (canvas.height = window.innerHeight);
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            const particles = [];
+            const maxParticles = 35; // 控制密度，優雅而不雜亂
+
+            class Petal {
+                constructor() {
+                    this.reset();
+                }
+
+                reset() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * -height - 20;
+                    this.size = Math.random() * 8 + 6; // 桃花瓣大小
+                    this.speedY = Math.random() * 0.8 + 0.4;
+                    this.speedX = Math.random() * 0.5 - 0.25;
+                    this.rotation = Math.random() * Math.PI * 2;
+                    this.rotationSpeed = Math.random() * 0.02 - 0.01;
+                    this.opacity = Math.random() * 0.4 + 0.25;
+                    // 分為嫩粉花瓣與金黃情愫光塵
+                    this.isSpark = Math.random() > 0.85; 
+                }
+
+                update() {
+                    this.y += this.speedY;
+                    this.x += this.speedX + Math.sin(this.y / 30) * 0.2; // 輕微擺動
+                    this.rotation += this.rotationSpeed;
+
+                    if (this.y > height + 20 || this.x < -20 || this.x > width + 20) {
+                        this.reset();
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.globalAlpha = this.opacity;
+
+                    if (this.isSpark) {
+                        // 金黃雲雨光塵
+                        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
+                        grad.addColorStop(0, 'rgba(254, 240, 138, 1)');
+                        grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // 粉嫩微醺桃花瓣
+                        ctx.fillStyle = 'rgba(244, 114, 182, 0.85)';
+                        ctx.beginPath();
+                        // 繪製心形/花瓣弧度
+                        ctx.moveTo(0, 0);
+                        ctx.bezierCurveTo(-this.size, -this.size / 1.5, -this.size * 1.5, this.size / 3, 0, this.size * 1.5);
+                        ctx.bezierCurveTo(this.size * 1.5, this.size / 3, this.size, -this.size / 1.5, 0, 0);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        // 花瓣上的微亮粉色脈絡
+                        ctx.strokeStyle = 'rgba(251, 207, 232, 0.4)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(0, this.size);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+            }
+
+            for (let i = 0; i < maxParticles; i++) {
+                particles.push(new Petal());
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                for (let p of particles) {
+                    p.update();
+                    p.draw();
+                }
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        /* --- 🎨 互動式手勢與滑鼠操作 Canvas 核心算法 --- */
+        function initCropCanvasEvents() {
+            const canvas = document.getElementById('previewCanvas');
+
+            // 1. 滑鼠滾輪無級縮放
+            canvas.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const zoomSpeed = 1.05;
+                if (e.deltaY < 0) {
+                    currentZoom = Math.min(4.0, currentZoom * zoomSpeed); // 放大上限 4x
+                } else {
+                    currentZoom = Math.max(0.2, currentZoom / zoomSpeed); // 縮小下限 0.2x
+                }
+                drawPreview();
+            }, { passive: false });
+
+            // 2. 電腦滑鼠拖曳定位
+            canvas.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                const rect = canvas.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                const rect = canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+
+                // 計算位移差並疊加
+                offsetX += (currentX - startX);
+                offsetY += (currentY - startY);
+
+                startX = currentX;
+                startY = currentY;
+
+                drawPreview();
+            });
+
+            window.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+
+            // 3. 行動裝置原生手勢 (Touch Events) 支援
+            canvas.addEventListener('touchstart', function(e) {
+                const rect = canvas.getBoundingClientRect();
+                if (e.touches.length === 1) {
+                    // 單指拖曳
+                    isDragging = true;
+                    startX = e.touches[0].clientX - rect.left;
+                    startY = e.touches[0].clientY - rect.top;
+                } else if (e.touches.length === 2) {
+                    // 雙指捏合縮放
+                    isDragging = false;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+                    initialZoom = currentZoom;
+                }
+            });
+
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault(); // 強制阻止網頁背景滾動與回彈
+                const rect = canvas.getBoundingClientRect();
+
+                if (e.touches.length === 1 && isDragging) {
+                    const currentX = e.touches[0].clientX - rect.left;
+                    const currentY = e.touches[0].clientY - rect.top;
+
+                    offsetX += (currentX - startX);
+                    offsetY += (currentY - startY);
+
+                    startX = currentX;
+                    startY = currentY;
+
+                    drawPreview();
+                } else if (e.touches.length === 2) {
+                    // 雙指距離計算
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (initialPinchDistance > 0) {
+                        const factor = distance / initialPinchDistance;
+                        currentZoom = Math.max(0.2, Math.min(4.0, initialZoom * factor));
+                        drawPreview();
+                    }
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', function(e) {
+                isDragging = false;
+                initialPinchDistance = 0;
+            });
+        }
+
+
+
+        function getCurrentMonthIndex() {
+            return currentDate.getMonth();
+        }
+
+        function setCalendarMonthByOffset(dir) {
+            // 修正 JS Date.setMonth 在 29/30/31 號切換月份時的溢位問題：
+            // 例如 5/31 + 1 個月可能跳到 7 月，導致背景連續或跑掉。
+            // 所以先固定到每月 1 號，再切換月份。
+            const y = currentDate.getFullYear();
+            const m = currentDate.getMonth();
+            currentDate = new Date(y, m + dir, 1);
+        }
+
+
+        /* --- 🖼️ 十二月份背景圖管理 --- */
+        function saveMonthBackgrounds() {
+            localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(monthBackgrounds));
+            persistRoyalState('backgrounds');
+        }
+
+        function compressImageToBase64(file, maxSize = 1200, quality = 0.78) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let w = img.width;
+                        let h = img.height;
+                        const scale = Math.min(1, maxSize / Math.max(w, h));
+                        w = Math.round(w * scale);
+                        h = Math.round(h * scale);
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderBackgroundManager() {
+            const grid = document.getElementById('monthBgGrid');
+            if (!grid) return;
+
+            const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+            grid.innerHTML = '';
+
+            for (let i = 0; i < 12; i++) {
+                const card = document.createElement('div');
+                card.className = 'month-bg-card';
+
+                const hasBg = !!monthBackgrounds[i];
+                card.innerHTML = `
+                    <div class="month-bg-title">${monthNames[i]}背景</div>
+                    <div class="month-bg-preview" id="monthBgPreview${i}" style="${hasBg ? `background-image:url('${monthBackgrounds[i]}')` : ''}">
+                        ${hasBg ? '' : '尚未設定'}
+                    </div>
+                    <input type="file" id="monthBgInput${i}" accept="image/*" onchange="handleSingleMonthBackgroundUpload(event, ${i})" style="display:none;">
+                    <div class="month-bg-actions">
+                        <button onclick="document.getElementById('monthBgInput${i}').click()" class="month-bg-mini-btn primary">設定</button>
+                        <button onclick="clearMonthBackground(${i})" class="month-bg-mini-btn danger">清除</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            }
+            updateCurrentMonthBackgroundPreview();
+        }
+
+        async function handleSingleMonthBackgroundUpload(event, index) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                monthBackgrounds[index] = await compressImageToBase64(file);
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast(`已設定 ${index + 1} 月背景圖`);
+            } catch(e) {
+                showToast("背景圖讀取失敗，請換一張圖片試試");
+            }
+
+            event.target.value = '';
+        }
+
+        async function handleCurrentMonthBackgroundUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const index = getCurrentMonthIndex();
+            try {
+                monthBackgrounds[index] = await compressImageToBase64(file);
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast(`已立即套用到目前日曆月份：${index + 1} 月`);
+            } catch(e) {
+                showToast("背景圖讀取失敗，請換一張圖片試試");
+            }
+
+            event.target.value = '';
+        }
+
+        function updateCurrentMonthBackgroundPreview() {
+            const label = document.getElementById('currentMonthBgLabel');
+            const preview = document.getElementById('currentMonthBgPreview');
+            if (!label || !preview) return;
+
+            const index = getCurrentMonthIndex();
+            label.innerText = `目前日曆停在 ${index + 1} 月，選圖會直接套用到 ${index + 1} 月`;
+            const bg = monthBackgrounds[index];
+
+            if (bg) {
+                preview.style.backgroundImage = `url('${bg}')`;
+                preview.innerText = "";
+            } else {
+                preview.style.backgroundImage = "";
+                preview.innerText = `${index + 1} 月尚未設定背景`;
+            }
+        }
+
+        async function handleBulkMonthBackgroundUpload(event) {
+            const files = Array.from(event.target.files || []).slice(0, 12);
+            if (files.length === 0) return;
+
+            showToast(`正在匯入 ${files.length} 張月份背景圖...`);
+
+            try {
+                for (let i = 0; i < files.length; i++) {
+                    monthBackgrounds[i] = await compressImageToBase64(files[i]);
+                }
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast(`已匯入 ${files.length} 張背景圖；目前只會顯示日曆所在月份的背景`);
+            } catch(e) {
+                showToast("部分背景圖匯入失敗，請確認圖片格式");
+            }
+
+            event.target.value = '';
+        }
+
+        function clearMonthBackground(index) {
+            monthBackgrounds[index] = "";
+            saveMonthBackgrounds();
+            renderBackgroundManager();
+            applyMonthBackground();
+            showToast(`已清除 ${index + 1} 月背景圖`);
+        }
+
+        function clearAllMonthBackgrounds() {
+            showCustomConfirm("皇上，確定要清空 1～12 月所有背景圖嗎？侍寢紀錄不會被刪除。", function() {
+                monthBackgrounds = new Array(12).fill("");
+                saveMonthBackgrounds();
+                renderBackgroundManager();
+                applyMonthBackground();
+                showToast("已清空所有月份背景圖");
+            });
+        }
+
+        function applyMonthBackground() {
+            const bgLayer = document.getElementById('monthBgLayer');
+            if (!bgLayer) return;
+
+            const monthIndex = getCurrentMonthIndex();
+            const bg = monthBackgrounds[monthIndex] || "";
+
+            // 先清掉舊背景再套新背景，避免 Safari / iPhone 視覺上殘留上一個月
+            bgLayer.classList.remove('active');
+            bgLayer.style.backgroundImage = '';
+
+            if (bg) {
+                requestAnimationFrame(() => {
+                    bgLayer.style.backgroundImage = `url('${bg}')`;
+                    bgLayer.classList.add('active');
+                });
+            }
+
+            updateCurrentMonthBackgroundPreview();
+        }
+
+        function initMonthSwipe() {
+            const target = document.getElementById('calendarPanel');
+            if (!target) return;
+
+            let startX = 0;
+            let startY = 0;
+            let startTime = 0;
+
+            target.addEventListener('touchstart', function(e) {
+                if (!e.touches || e.touches.length !== 1) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                startTime = Date.now();
+            }, { passive: true });
+
+            target.addEventListener('touchend', function(e) {
+                if (!e.changedTouches || e.changedTouches.length !== 1) return;
+
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const dt = Date.now() - startTime;
+
+                if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.35 && dt < 700) {
+                    if (dx < 0) changeMonth(1);
+                    else changeMonth(-1);
+                }
+            }, { passive: true });
+        }
+
+
+        // 分頁切換器
+        function switchTab(tabId) {
+            document.querySelectorAll('.royal-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            document.getElementById('calendarPanel').style.display = 'none';
+            document.getElementById('menstruationPanel').style.display = 'none';
+            document.getElementById('analyticsPanel').style.display = 'none';
+            document.getElementById('settingsPanel').style.display = 'none';
+
+            if (tabId === 'calendar') {
+                document.getElementById('calendarPanel').style.display = 'block';
+                renderCalendar();
+            } else if (tabId === 'menstruation') {
+                document.getElementById('menstruationPanel').style.display = 'block';
+                renderMenstruationList();
+            } else if (tabId === 'analytics') {
+                document.getElementById('analyticsPanel').style.display = 'block';
+                updateStatistics();
+            } else if (tabId === 'settings') {
+                document.getElementById('settingsPanel').style.display = 'block';
+                renderBackgroundManager();
+            }
+        }
+
+        /* --- 🩸 葵水安全期生理邏輯計算引擎 --- */
+        // 計算給定日期 targetDateStr 時，某位妃嬪的生理期狀態
+        function calculateMenstrualStatus(mens, targetDateStr) {
+            const target = new Date(targetDateStr + "T00:00:00");
+            const start = new Date(mens.lastStartDate + "T00:00:00");
+            
+            // 計算相差天數
+            const diffTime = target.getTime() - start.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            const cycle = parseInt(mens.cycleLength);
+            const period = parseInt(mens.periodLength);
+            
+            // 用數學餘數公式，完美投影至未來的每個週期
+            // $dayInCycle \in [0, cycle - 1]$
+            let dayInCycle = ((diffDays % cycle) + cycle) % cycle;
+            
+            let status = 'safe'; // 'mens', 'fertile', 'safe'
+            let label = '桃紅安全 (安全期)';
+            let desc = '難留種，宜盡興繾綣 🟢';
+            let badgeClass = 'badge-safe';
+
+            if (dayInCycle < period) {
+                status = 'mens';
+                label = '葵水臨身 (行經期)';
+                desc = '避開召幸 / 掛紅燈 🩸';
+                badgeClass = 'badge-mens';
+            } else if (dayInCycle >= 11 && dayInCycle <= 19) {
+                // 生理週期第11至19天通常為易受孕排卵危險期
+                status = 'fertile';
+                label = '易孕春情 (易孕期)';
+                desc = '易留種，宜受孕翻牌 🔥';
+                badgeClass = 'badge-fertile';
+            }
+
+            return { status, label, desc, badgeClass, dayInCycle };
+        }
+
+        // 保存/新增后妃生理期資料
+        function saveMens(event) {
+            event.preventDefault();
+            const name = autoApproveRoyalTitle(document.getElementById('mensName').value);
+            const date = document.getElementById('mensDate').value;
+            const cycle = parseInt(document.getElementById('mensCycle').value);
+            const length = parseInt(document.getElementById('mensLength').value);
+
+            // 檢查是否已存在，若存在則覆蓋，不存在則新增
+            const existingIndex = menstruationRecords.findIndex(m => m.name === name);
+            if (existingIndex !== -1) {
+                menstruationRecords[existingIndex] = {
+                    ...menstruationRecords[existingIndex],
+                    lastStartDate: date,
+                    cycleLength: cycle,
+                    periodLength: length
+                };
+                showToast(`已成功修改 ${name} 的葵水生理起居簿`);
+            } else {
+                menstruationRecords.push({
+                    id: Date.now().toString(),
+                    name: name,
+                    lastStartDate: date,
+                    cycleLength: cycle,
+                    periodLength: length
+                });
+                showToast(`已為 ${name} 建立專屬葵水起居簿`);
+            }
+
+            localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
+            persistRoyalState('menstruation');
+            document.getElementById('mensForm').reset();
+            document.getElementById('mensDate').value = new Date().toISOString().split('T')[0];
+            renderMenstruationList();
+        }
+
+        // 刪除葵水生理起居檔案
+        function deleteMens(id, name) {
+            showCustomConfirm(`皇上，您確定要抹去「${name}」的葵水起居註嗎？`, function() {
+                menstruationRecords = menstruationRecords.filter(m => m.id !== id);
+                localStorage.setItem('royal_menstruation_v2', JSON.stringify(menstruationRecords));
+            persistRoyalState('menstruation');
+                showToast("已退去該妃嬪生理檔案");
+                renderMenstruationList();
+            });
+        }
+
+        // 渲染今日全後宮安全期清單
+        function renderMenstruationList() {
+            const body = document.getElementById('mensListBody');
+            body.innerHTML = '';
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            if (menstruationRecords.length === 0) {
+                body.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">敬事房尚無任何后妃的葵水註冊資料。</td></tr>`;
+                return;
+            }
+
+            menstruationRecords.forEach(mens => {
+                const state = calculateMenstrualStatus(mens, todayStr);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: bold; color: #fef08a;">${mens.name}</td>
+                    <td style="font-family: monospace; color: #cbd5e1;">${mens.lastStartDate}</td>
+                    <td>
+                        <span class="badge ${state.badgeClass}">${state.label}</span>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${state.desc}</div>
+                    </td>
+                    <td>
+                        <button onclick="deleteMens('${mens.id}', '${mens.name}')" class="text-action-btn" style="color: #fca5a5; padding: 3px 8px;">抹去</button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+
+        function normalizeStatus(status) {
+            // 舊版資料相容：原本 completed 一律歸為「無套侍寢」
+            return status === 'completed' ? 'raw' : status;
+        }
+
+        function isGraceStatus(status) {
+            status = normalizeStatus(status);
+            return status === 'condom' || status === 'raw' || status === 'retained';
+        }
+
+        function getStatusDisplay(status) {
+            status = normalizeStatus(status);
+            if (status === 'pending') return { text: '盼帝臨幸', badgeClass: 'badge-pending', dotClass: 'dot-pending' };
+            if (status === 'condom') return { text: '已賜雲雨・戴套', badgeClass: 'badge-condom', dotClass: 'dot-condom' };
+            if (status === 'raw') return { text: '已賜雲雨・無套', badgeClass: 'badge-raw', dotClass: 'dot-raw' };
+            if (status === 'retained') return { text: '恩澤留種', badgeClass: 'badge-retained', dotClass: 'dot-retained' };
+            return { text: '已賜雲雨・無套', badgeClass: 'badge-raw', dotClass: 'dot-raw' };
+        }
+
+
+        function renderCalendar() {
+            applyMonthBackground();
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            // 月曆與背景固定以該月 1 號為基準，避免切換月份時跑版或背景錯位
+            currentDate = new Date(year, month, 1);
+            document.getElementById('calendarTitle').innerText = `${year}年 ${String(month + 1).padStart(2, '0')}月`;
+
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const empty = document.createElement('div');
+                grid.appendChild(empty);
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayRecords = records.filter(r => r.date === dayStr);
+
+                const cell = document.createElement('button');
+                cell.className = 'day-cell';
+                
+                const todayObj = new Date();
+                if (todayObj.getFullYear() === year && todayObj.getMonth() === month && todayObj.getDate() === day) {
+                    cell.className += ' today';
+                }
+
+                cell.onclick = () => openModal(dayStr);
+
+                let innerHTML = `<span class="day-number">${day}</span>`;
+
+                if (dayRecords.length > 0) {
+                    let dotClass = 'dot-pending';
+                    if (dayRecords.some(r => normalizeStatus(r.status) === 'retained')) dotClass = 'dot-retained';
+                    else if (dayRecords.some(r => normalizeStatus(r.status) === 'raw')) dotClass = 'dot-raw';
+                    else if (dayRecords.some(r => normalizeStatus(r.status) === 'condom')) dotClass = 'dot-condom';
+                    innerHTML += `<span class="status-dot ${dotClass}"></span>`;
+                }
+
+                let avatarHTML = '<div class="avatar-list">';
+                dayRecords.forEach((r, idx) => {
+                    // v26：安全縮圖，避免空圖或異常字串破壞 HTML
+                    avatarHTML += `<img src="${escapeHTML(safeImageSrc(r.image))}" class="micro-avatar" title="${escapeHTML(r.name || '')}">`;
+                });
+                avatarHTML += '</div>';
+
+                cell.innerHTML = innerHTML + avatarHTML;
+                grid.appendChild(cell);
+            }
+        }
+
+        function changeMonth(dir) {
+            setCalendarMonthByOffset(dir);
+            applyMonthBackground();
+            renderCalendar();
+        }
+
+        function openModal(dateStr) {
+            activeDateStr = dateStr;
+            document.getElementById('modalDateTitle').innerText = dateStr;
+            document.getElementById('detailModal').classList.add('active');
+            renderModalRecords();
+            renderModalMensCheck(dateStr); // 當日安全期狀態分析檢視
+            cancelForm();
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('active');
+            tempBase64Image = "";
+            tempOriginalImage = "";
+        }
+
+        // 渲染選定日期的全後宮妃嬪葵水狀態
+        function renderModalMensCheck(dateStr) {
+            const container = document.getElementById('modalMensList');
+            container.innerHTML = '';
+
+            if (menstruationRecords.length === 0) {
+                container.innerHTML = `<span style="color: #94a3b8; font-style: italic;">敬事房無註冊妃嬪生理數據。請到「葵水避孕」分頁登記。</span>`;
+                return;
+            }
+
+            menstruationRecords.forEach(m => {
+                const state = calculateMenstrualStatus(m, dateStr);
+                const item = document.createElement('div');
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.style.padding = '4px 0';
+                item.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+                
+                item.innerHTML = `
+                    <span style="font-weight: bold; color: #cbd5e1;">${m.name}</span>
+                    <span class="badge ${state.badgeClass}" style="font-size: 10px;">${state.label}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderModalRecords() {
+            const container = document.getElementById('modalRecordsArea');
+            container.innerHTML = '';
+            const dayRecords = records.filter(r => r.date === activeDateStr);
+
+            if (dayRecords.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.textAlign = 'center';
+                empty.style.padding = '24px 0';
+                empty.style.color = '#cbd5e1';
+                empty.style.fontSize = '14px';
+                empty.textContent = '今夜寂寥，尚無任何妃嬪侍寢承恩。';
+                container.appendChild(empty);
+                return;
+            }
+
+            dayRecords.forEach(rec => {
+                const hour = Number(rec.hour || 0);
+                const nextHour = (hour + 1) % 24;
+                const timeStr = `${String(hour).padStart(2, '0')}:00 - ${String(nextHour).padStart(2, '0')}:00`;
+
+                const statusInfo = getStatusDisplay(rec.status);
+                const statusText = statusInfo.text;
+                const statusClass = statusInfo.badgeClass;
+
+                const item = document.createElement('div');
+                item.className = 'record-card';
+
+                const normalizedStatus = normalizeStatus(rec.status);
+                item.style.borderColor = normalizedStatus === 'retained'
+                    ? '#ef4444'
+                    : (normalizedStatus === 'condom'
+                        ? '#38bdf8'
+                        : (normalizedStatus === 'raw' ? '#ec4899' : '#f59e0b'));
+
+                const recordInfo = document.createElement('div');
+                recordInfo.className = 'record-info';
+
+                const img = document.createElement('img');
+                img.className = 'record-avatar';
+                img.src = safeImageSrc(rec.image);
+                img.title = '點擊查看原圖';
+                img.alt = safeText(rec.name, '妃嬪照片');
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = defaultAvatar;
+                };
+                img.addEventListener('click', function(event) {
+                    openPhotoViewer(String(rec.id), event);
+                });
+
+                const details = document.createElement('div');
+                details.className = 'record-details';
+
+                const nameRow = document.createElement('div');
+                nameRow.className = 'record-name-row';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'record-name';
+                nameSpan.textContent = safeText(rec.name, '未命名妃嬪');
+
+                const badge = document.createElement('span');
+                badge.className = `status-badge ${statusClass}`;
+                badge.textContent = statusText;
+
+                nameRow.appendChild(nameSpan);
+                nameRow.appendChild(badge);
+
+                const meta = document.createElement('span');
+                meta.className = 'record-meta';
+                const locationDisplay = rec.note ? `${safeText(rec.location)} · ${safeText(rec.note)}` : safeText(rec.location);
+                meta.innerHTML = `${escapeHTML(timeStr)} <br> ${escapeHTML(locationDisplay)}`;
+
+                details.appendChild(nameRow);
+                details.appendChild(meta);
+
+                recordInfo.appendChild(img);
+                recordInfo.appendChild(details);
+
+                const actions = document.createElement('div');
+                actions.className = 'record-actions';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'text-action-btn';
+                editBtn.style.color = '#fef08a';
+                editBtn.style.fontWeight = 'bold';
+                editBtn.textContent = '修改';
+                editBtn.addEventListener('click', function() { editRecord(String(rec.id)); });
+
+                const dupBtn = document.createElement('button');
+                dupBtn.className = 'text-action-btn';
+                dupBtn.style.color = '#93c5fd';
+                dupBtn.style.fontWeight = 'bold';
+                dupBtn.textContent = '複製';
+                dupBtn.addEventListener('click', function() { duplicateRecord(String(rec.id)); });
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-action-btn';
+                delBtn.style.color = '#fca5a5';
+                delBtn.style.fontWeight = 'bold';
+                delBtn.textContent = '退寢';
+                delBtn.addEventListener('click', function() { triggerDeleteRecord(String(rec.id)); });
+
+                actions.appendChild(editBtn);
+                actions.appendChild(dupBtn);
+                actions.appendChild(delBtn);
+
+                item.appendChild(recordInfo);
+                item.appendChild(actions);
+                container.appendChild(item);
+            });
+        }
+
+
+        function openPhotoViewer(id, event) {
+            if (event) event.stopPropagation();
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+
+            const imgSrc = safeImageSrc(rec.originalImage || rec.image);
+            document.getElementById('photoViewerImg').src = imgSrc;
+            document.getElementById('photoViewerTitle').innerText = `${rec.name}｜真容原圖`;
+            document.getElementById('photoViewerModal').classList.add('active');
+        }
+
+        function closePhotoViewer() {
+            document.getElementById('photoViewerModal').classList.remove('active');
+            document.getElementById('photoViewerImg').src = "";
+        }
+
+        function toggleCustomLocation() {
+            const select = document.getElementById('locationSelect');
+            const customInput = document.getElementById('inputCustomLocation');
+            if (select.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+            }
+        }
+
+        /* --- 原生 Canvas 裁切讀取 --- */
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                sourceImg = new Image();
+                sourceImg.onload = function() {
+                    // 上傳新圖時重置所有縮放與偏移狀態
+                    currentZoom = 1.0;
+                    offsetX = 0;
+                    offsetY = 0;
+                    document.getElementById('cropModal').classList.add('active');
+                    drawPreview();
+                };
+                tempOriginalImage = e.target.result; // 保留完整原圖供放大檢視
+                sourceImg.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+
+        // 從目前調整後照片的四周邊緣取樣，計算相近色背景。
+        // 這版不再把照片硬延展模糊，而是用邊緣色生成柔和背景，再讓照片柔邊融入。
+        function getAdjustedImageEdgePalette(img, x, y, w, h, canvasSize) {
+            const sampleCanvas = document.createElement('canvas');
+            sampleCanvas.width = canvasSize;
+            sampleCanvas.height = canvasSize;
+            const sCtx = sampleCanvas.getContext('2d');
+            sCtx.clearRect(0, 0, canvasSize, canvasSize);
+            sCtx.drawImage(img, x, y, w, h);
+
+            const imgData = sCtx.getImageData(0, 0, canvasSize, canvasSize);
+            const data = imgData.data;
+
+            const left = Math.max(0, Math.floor(x));
+            const top = Math.max(0, Math.floor(y));
+            const right = Math.min(canvasSize - 1, Math.ceil(x + w) - 1);
+            const bottom = Math.min(canvasSize - 1, Math.ceil(y + h) - 1);
+
+            const colors = [];
+            const step = 3;
+            const band = 10;
+
+            function pushPixel(px, py, weight = 1) {
+                if (px < 0 || py < 0 || px >= canvasSize || py >= canvasSize) return;
+                const i = (py * canvasSize + px) * 4;
+                const a = data[i + 3];
+                if (a < 20) return;
+
+                let r = data[i], g = data[i + 1], b = data[i + 2];
+
+                // 排除太白、太黑、太高飽和的雜訊，避免背景變髒或過亮
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const brightness = (r + g + b) / 3;
+                const saturation = max - min;
+
+                if (brightness < 18 || brightness > 245) return;
+                if (saturation > 150 && brightness > 190) return;
+
+                for (let k = 0; k < weight; k++) colors.push([r, g, b]);
+            }
+
+            if (right > left && bottom > top) {
+                // 取照片矩形邊緣附近的色彩，優先取靠近外框的顏色
+                for (let xx = left; xx <= right; xx += step) {
+                    for (let t = 0; t < band; t += 2) {
+                        pushPixel(xx, top + t, 2);
+                        pushPixel(xx, bottom - t, 2);
+                    }
+                }
+                for (let yy = top; yy <= bottom; yy += step) {
+                    for (let t = 0; t < band; t += 2) {
+                        pushPixel(left + t, yy, 2);
+                        pushPixel(right - t, yy, 2);
+                    }
+                }
+
+                // 補一點中心偏外圍色，讓背景不會只取到單一邊線
+                const innerBand = Math.max(12, Math.floor(Math.min(w, h) * 0.12));
+                for (let xx = left + innerBand; xx <= right - innerBand; xx += 8) {
+                    pushPixel(xx, top + innerBand, 1);
+                    pushPixel(xx, bottom - innerBand, 1);
+                }
+                for (let yy = top + innerBand; yy <= bottom - innerBand; yy += 8) {
+                    pushPixel(left + innerBand, yy, 1);
+                    pushPixel(right - innerBand, yy, 1);
+                }
+            }
+
+            // 如果取樣不足，給一個柔和紫棕底色
+            if (colors.length < 12) {
+                return {
+                    main: [86, 55, 78],
+                    light: [126, 89, 116],
+                    dark: [36, 18, 44]
+                };
+            }
+
+            // 使用中位數而不是平均，降低雜色影響
+            function median(arr) {
+                const sorted = arr.slice().sort((a, b) => a - b);
+                return sorted[Math.floor(sorted.length / 2)];
+            }
+
+            const rs = colors.map(c => c[0]);
+            const gs = colors.map(c => c[1]);
+            const bs = colors.map(c => c[2]);
+
+            let r = median(rs), g = median(gs), b = median(bs);
+
+            // 與系統底色融合，避免背景太突兀
+            const tint = [24, 7, 36];
+            r = Math.round(r * 0.72 + tint[0] * 0.28);
+            g = Math.round(g * 0.72 + tint[1] * 0.28);
+            b = Math.round(b * 0.72 + tint[2] * 0.28);
+
+            function clamp(v) { return Math.max(0, Math.min(255, Math.round(v))); }
+
+            return {
+                main: [clamp(r), clamp(g), clamp(b)],
+                light: [clamp(r * 1.25 + 18), clamp(g * 1.25 + 14), clamp(b * 1.25 + 18)],
+                dark: [clamp(r * 0.50), clamp(g * 0.50), clamp(b * 0.55)]
+            };
+        }
+
+        function drawEdgeColorBackground(ctx, img, x, y, w, h, canvasSize) {
+            const palette = getAdjustedImageEdgePalette(img, x, y, w, h, canvasSize);
+            const [r, g, b] = palette.main;
+            const [lr, lg, lb] = palette.light;
+            const [dr, dg, db] = palette.dark;
+
+            // 基底使用邊緣相近色
+            const linear = ctx.createLinearGradient(0, 0, canvasSize, canvasSize);
+            linear.addColorStop(0, `rgb(${lr}, ${lg}, ${lb})`);
+            linear.addColorStop(0.52, `rgb(${r}, ${g}, ${b})`);
+            linear.addColorStop(1, `rgb(${dr}, ${dg}, ${db})`);
+            ctx.fillStyle = linear;
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+            // 加上柔和光暈，讓背景像照片邊緣色自然暈開
+            const cx = Math.max(0, Math.min(canvasSize, x + w / 2));
+            const cy = Math.max(0, Math.min(canvasSize, y + h / 2));
+            const radial = ctx.createRadialGradient(cx, cy, 10, cx, cy, canvasSize * 0.72);
+            radial.addColorStop(0, `rgba(${lr}, ${lg}, ${lb}, 0.72)`);
+            radial.addColorStop(0.58, `rgba(${r}, ${g}, ${b}, 0.35)`);
+            radial.addColorStop(1, `rgba(${dr}, ${dg}, ${db}, 0.08)`);
+            ctx.fillStyle = radial;
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+            // 很淡的系統紫色罩，維持整體古風介面一致
+            ctx.fillStyle = "rgba(24, 7, 36, 0.12)";
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+        }
+
+        // 將清晰前景照片以更寬的柔霧邊緣疊上去，讓照片像融入邊緣色背景
+        function drawSoftForegroundImage(ctx, img, x, y, w, h, canvasSize) {
+            const fgCanvas = document.createElement('canvas');
+            fgCanvas.width = canvasSize;
+            fgCanvas.height = canvasSize;
+            const fgCtx = fgCanvas.getContext('2d');
+
+            fgCtx.drawImage(img, x, y, w, h);
+
+            const feather = Math.max(34, Math.min(78, Math.min(Math.abs(w), Math.abs(h)) * 0.24));
+            fgCtx.globalCompositeOperation = 'destination-in';
+
+            const gradX = fgCtx.createLinearGradient(x, 0, x + w, 0);
+            gradX.addColorStop(0, 'rgba(0,0,0,0)');
+            gradX.addColorStop(Math.min(0.48, feather / Math.max(1, Math.abs(w))), 'rgba(0,0,0,1)');
+            gradX.addColorStop(Math.max(0.52, 1 - feather / Math.max(1, Math.abs(w))), 'rgba(0,0,0,1)');
+            gradX.addColorStop(1, 'rgba(0,0,0,0)');
+            fgCtx.fillStyle = gradX;
+            fgCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+            const gradY = fgCtx.createLinearGradient(0, y, 0, y + h);
+            gradY.addColorStop(0, 'rgba(0,0,0,0)');
+            gradY.addColorStop(Math.min(0.48, feather / Math.max(1, Math.abs(h))), 'rgba(0,0,0,1)');
+            gradY.addColorStop(Math.max(0.52, 1 - feather / Math.max(1, Math.abs(h))), 'rgba(0,0,0,1)');
+            gradY.addColorStop(1, 'rgba(0,0,0,0)');
+            fgCtx.fillStyle = gradY;
+            fgCtx.fillRect(0, 0, canvasSize, canvasSize);
+
+            fgCtx.globalCompositeOperation = 'source-over';
+
+            // 清晰圖微微柔化邊界，不模糊主臉
+            ctx.save();
+            ctx.filter = 'drop-shadow(0 0 10px rgba(251, 207, 232, 0.10))';
+            ctx.drawImage(fgCanvas, 0, 0);
+            ctx.restore();
+        }
+
+
+        // 渲染畫布預覽：偵測目前照片邊緣相近色作為背景，再讓照片柔邊融入
+        function drawPreview() {
+            const canvas = document.getElementById('previewCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 300;
+            canvas.height = 300;
+
+            let iw = sourceImg.width;
+            let ih = sourceImg.height;
+
+            // 前端可被滑鼠與單/雙指拖曳與縮放的清晰真容主體
+            let scale = Math.min(240 / iw, 240 / ih) * currentZoom;
+            let nw = iw * scale;
+            let nh = ih * scale;
+
+            // 疊加拖曳位置變量 (offsetX, offsetY)
+            let nx = (300 - nw) / 2 + offsetX;
+            let ny = (300 - nh) / 2 + offsetY;
+
+            // 1. 背景：偵測目前照片四周邊緣相近色，生成柔和背景
+            drawEdgeColorBackground(ctx, sourceImg, nx, ny, nw, nh, 300);
+
+            // 2. 前景：清晰照片本身做更寬的柔邊，像融入背景
+            drawSoftForegroundImage(ctx, sourceImg, nx, ny, nw, nh, 300);
+        }
+
+        function cancelCrop() {
+            document.getElementById('cropModal').classList.remove('active');
+            document.getElementById('inputImage').value = '';
+        }
+
+        function confirmCrop() {
+            const canvas = document.getElementById('previewCanvas');
+            
+            // 裁切範圍必須只取「圓形遮罩」內的中心區域，
+            // 而不是把整張 300x300 預覽圖再縮成頭像。
+            // 目前遮罩直徑為 220px，位於 300x300 畫布中央。
+            const cropSize = 220;
+            const cropX = (canvas.width - cropSize) / 2;
+            const cropY = (canvas.height - cropSize) / 2;
+
+            // 輸出皇家專用高畫質大頭照
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = 260;
+            outCanvas.height = 260;
+            const oCtx = outCanvas.getContext('2d');
+
+            // 只擷取中央實際裁剪區，再放大輸出。
+            // 若主圖有移出範圍，因預覽底層已先以照片邊緣模糊擴散填滿，
+            // 所以輸出後也會自然保留暈開效果，不會出現空白。
+            oCtx.drawImage(canvas, cropX, cropY, cropSize, cropSize, 0, 0, outCanvas.width, outCanvas.height);
+            tempBase64Image = outCanvas.toDataURL('image/jpeg', 0.94);
+
+            document.getElementById('cropModal').classList.remove('active');
+            document.getElementById('imagePlaceholder').style.display = 'none';
+            document.getElementById('imagePreviewContainer').style.display = 'flex';
+            document.getElementById('imagePreview').src = tempBase64Image;
+        }
+
+        function showAddForm() {
+            document.getElementById('formSection').style.display = 'block';
+            document.getElementById('modalActions').style.display = 'none';
+            document.getElementById('formTitle').innerText = '御筆欽定翻牌侍寢';
+            document.getElementById('submitBtn').innerText = '奉旨登錄春宵冊';
+            
+            document.getElementById('editId').value = '';
+            document.getElementById('inputDate').value = activeDateStr;
+            document.getElementById('inputName').value = '';
+            document.getElementById('inputStatus').value = 'raw';
+            document.getElementById('locationSelect').value = '台南市';
+            document.getElementById('inputCustomLocation').value = '';
+            document.getElementById('inputCustomLocation').style.display = 'none';
+            document.getElementById('inputNote').value = '';
+            document.getElementById('inputImage').value = '';
+            document.getElementById('imagePlaceholder').style.display = 'block';
+            document.getElementById('imagePreviewContainer').style.display = 'none';
+            
+            tempBase64Image = '';
+            tempOriginalImage = '';
+        }
+
+        function editRecord(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('formSection').style.display = 'block';
+            document.getElementById('modalActions').style.display = 'none';
+            document.getElementById('formTitle').innerText = '御筆更正春宵密檔';
+            document.getElementById('submitBtn').innerText = '奉旨修改春宵密存';
+
+            document.getElementById('editId').value = rec.id;
+            document.getElementById('inputDate').value = rec.date || activeDateStr;
+            
+            let rawName = rec.name;
+            if (rawName.endsWith("娘娘") && rawName.length > 2) rawName = rawName.slice(0, -2);
+            
+            document.getElementById('inputName').value = rawName;
+            document.getElementById('inputHour').value = rec.hour;
+            document.getElementById('inputStatus').value = normalizeStatus(rec.status);
+            document.getElementById('inputNote').value = rec.note || "";
+
+            const defaultLocs = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '基隆市', '新竹縣市', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '嘉義縣市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎金馬離島'];
+            if (defaultLocs.includes(rec.location)) {
+                document.getElementById('locationSelect').value = rec.location;
+                document.getElementById('inputCustomLocation').style.display = 'none';
+            } else {
+                document.getElementById('locationSelect').value = 'custom';
+                document.getElementById('inputCustomLocation').style.display = 'block';
+                document.getElementById('inputCustomLocation').value = rec.location;
+            }
+
+            tempBase64Image = rec.image;
+            tempOriginalImage = rec.originalImage || rec.image;
+            document.getElementById('imagePreview').src = rec.image;
+            document.getElementById('imagePlaceholder').style.display = 'none';
+            document.getElementById('imagePreviewContainer').style.display = 'flex';
+        }
+
+
+        function duplicateRecord(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('formSection').style.display = 'block';
+            document.getElementById('modalActions').style.display = 'none';
+            document.getElementById('formTitle').innerText = '複製春宵密檔為新紀錄';
+            document.getElementById('submitBtn').innerText = '另存為新春宵紀錄';
+
+            // 關鍵：清空 editId，儲存時才會「新增一筆」，不會覆蓋原紀錄
+            document.getElementById('editId').value = '';
+            document.getElementById('inputDate').value = rec.date || activeDateStr;
+
+            let rawName = rec.name;
+            if (rawName.endsWith("娘娘") && rawName.length > 2) rawName = rawName.slice(0, -2);
+
+            document.getElementById('inputName').value = rawName;
+            document.getElementById('inputHour').value = rec.hour;
+            document.getElementById('inputStatus').value = normalizeStatus(rec.status);
+            document.getElementById('inputNote').value = rec.note || "";
+
+            const defaultLocs = ['台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市', '基隆市', '新竹縣市', '苗栗縣', '彰化縣', '南投縣', '雲林縣', '嘉義縣市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎金馬離島'];
+            if (defaultLocs.includes(rec.location)) {
+                document.getElementById('locationSelect').value = rec.location;
+                document.getElementById('inputCustomLocation').style.display = 'none';
+                document.getElementById('inputCustomLocation').required = false;
+                document.getElementById('inputCustomLocation').value = '';
+            } else {
+                document.getElementById('locationSelect').value = 'custom';
+                document.getElementById('inputCustomLocation').style.display = 'block';
+                document.getElementById('inputCustomLocation').required = true;
+                document.getElementById('inputCustomLocation').value = rec.location;
+            }
+
+            tempBase64Image = rec.image || defaultAvatar;
+            tempOriginalImage = rec.originalImage || rec.image || defaultAvatar;
+            document.getElementById('imagePreview').src = tempBase64Image;
+            document.getElementById('imagePlaceholder').style.display = 'none';
+            document.getElementById('imagePreviewContainer').style.display = 'flex';
+
+            showToast("已複製原紀錄內容，可修改日期與內容後另存新紀錄");
+        }
+
+
+        function cancelForm() {
+            document.getElementById('formSection').style.display = 'none';
+            document.getElementById('modalActions').style.display = 'flex';
+        }
+
+        function autoApproveRoyalTitle(rawName) {
+            let name = rawName.trim();
+            const suffixes = ["娘娘", "皇后", "貴妃", "妃", "嬪", "貴人", "答應", "常在", "小主"];
+            if (!suffixes.some(s => name.endsWith(s))) name += "娘娘";
+            return name;
+        }
+
+        function saveRecord(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById('editId').value;
+            const recordDate = document.getElementById('inputDate').value || activeDateStr;
+            const finalName = autoApproveRoyalTitle(document.getElementById('inputName').value);
+            const hour = parseInt(document.getElementById('inputHour').value);
+            const status = normalizeStatus(document.getElementById('inputStatus').value);
+            const locSelect = document.getElementById('locationSelect').value;
+            const finalLocation = (locSelect === 'custom') ? document.getElementById('inputCustomLocation').value.trim() : locSelect;
+            const note = document.getElementById('inputNote').value.trim();
+            const finalImage = tempBase64Image || defaultAvatar;
+            const oldRecord = editId ? records.find(r => r.id === editId) : null;
+            const finalOriginalImage = tempOriginalImage || (oldRecord ? (oldRecord.originalImage || oldRecord.image) : finalImage);
+
+            if (editId) {
+                const index = records.findIndex(r => r.id === editId);
+                if (index !== -1) {
+                    records[index] = { ...records[index], date: recordDate, name: finalName, hour, status, location: finalLocation, note, image: finalImage, originalImage: finalOriginalImage };
+                    showToast("恩澤已改，春宵冊已重新密封");
+                }
+            } else {
+                records.push({ id: Date.now().toString(), date: recordDate, hour, name: finalName, status, location: finalLocation, note, image: finalImage, originalImage: finalOriginalImage });
+                showToast("敬事房已將今宵侍寢恩澤記入密檔");
+            }
+
+            records.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.hour - b.hour);
+            localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
+            persistRoyalState('records');
+
+            // 若修改時變更日期，直接切換彈窗到新日期，方便確認新紀錄位置
+            activeDateStr = recordDate;
+            document.getElementById('modalDateTitle').innerText = activeDateStr;
+            renderCalendar();
+            renderModalRecords();
+            renderModalMensCheck(activeDateStr);
+            cancelForm();
+            updateStatistics();
+        }
+
+        function triggerDeleteRecord(id) {
+            const target = records.find(r => r.id === id);
+            showCustomConfirm(`皇上，您確定要狠心抹去與「${target ? target.name : '後妃'}」的繾綣雲雨痕跡嗎？`, function() {
+                records = records.filter(r => r.id !== id);
+                localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(records));
+            persistRoyalState('records');
+                showToast("已將該妃嬪侍寢名錄抹除");
+                renderCalendar();
+                renderModalRecords();
+                cancelForm();
+                updateStatistics();
+            });
+        }
+
+        // 敬事房密報數據統計
+        function updateStatistics() {
+            // 恩澤統計只計算「已賜雲雨 completed」與「恩澤留種 retained」
+            // 「待寢 pending」只是預約/排程，不列入恩澤、榜單、常用地點統計
+            const blessedRecords = records.filter(r => r.status !== 'pending');
+
+            // 1. 總承恩次數
+            const total = blessedRecords.length;
+            document.getElementById('statTotal').innerText = total;
+
+            // 2. 有承恩紀錄的妃嬪數
+            const uniqueConcubines = [...new Set(blessedRecords.map(r => r.name))];
+            document.getElementById('statConcubines').innerText = uniqueConcubines.length;
+
+            // 3. 留種恩賜
+            const retained = blessedRecords.filter(r => r.status === 'retained').length;
+            document.getElementById('statRetained').innerText = retained;
+
+            // 4. 最常巡幸行宮
+            const locations = blessedRecords.map(r => r.location);
+            if (locations.length > 0) {
+                const locCounts = {};
+                locations.forEach(loc => locCounts[loc] = (locCounts[loc] || 0) + 1);
+                const favorite = Object.keys(locCounts).reduce((a, b) => locCounts[a] > locCounts[b] ? a : b);
+                document.getElementById('statFavoriteLoc').innerText = `${favorite} (${locCounts[favorite]}次)`;
+            } else {
+                document.getElementById('statFavoriteLoc').innerText = "無";
+            }
+
+            // 5. 榜單動態生成 (Top 5)
+            const concubineStats = {};
+            blessedRecords.forEach(r => {
+                if (!concubineStats[r.name]) {
+                    concubineStats[r.name] = { count: 0, image: r.image, name: r.name };
+                }
+                concubineStats[r.name].count += 1;
+            });
+
+            const sortedConcubines = Object.values(concubineStats).sort((a, b) => b.count - a.count).slice(0, 5);
+            const leaderboard = document.getElementById('leaderboardArea');
+            leaderboard.innerHTML = '';
+
+            if (sortedConcubines.length === 0) {
+                leaderboard.innerHTML = `<p style="text-align: center; color: #cbd5e1; font-size: 13px; padding: 16px;">尚無已侍寢或留精紀錄，待寢紀錄不列入恩澤榜。</p>`;
+                return;
+            }
+
+            sortedConcubines.forEach((c, index) => {
+                const medalColors = ['#fbbf24', '#e2e8f0', '#b45309', '#a78bfa', '#a78bfa'];
+                const rankText = index === 0 ? "🥇" : (index === 1 ? "🥈" : (index === 2 ? "🥉" : `${index + 1}`));
+
+                const card = document.createElement('div');
+                card.className = 'leaderboard-item';
+                card.innerHTML = `
+                    <div class="leaderboard-profile">
+                        <span class="leaderboard-rank" style="color: ${medalColors[index]}">${rankText}</span>
+                        <img src="${c.image}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid rgba(212,175,55,0.4);">
+                        <span style="font-weight: bold; color: #fff; font-size: 14px;">${c.name}</span>
+                    </div>
+                    <span style="font-size: 13px; color: #f472b6; font-weight: bold;">恩澤 ${c.count} 次</span>
+                `;
+                leaderboard.appendChild(card);
+            });
+        }
+
+        /* --- 備份與管理功能 --- */
+        function buildArchiveObject() {
+            return getRoyalStateObject();
+        }
+
+        function getArchiveFileName() {
+            const today = new Date().toISOString().split('T')[0];
+            return `春宵密存備份_${today}.json`;
+        }
+
+        function getArchiveJsonText() {
+            return JSON.stringify(buildArchiveObject(), null, 2);
+        }
+
+        function createArchiveFile() {
+            const fileName = getArchiveFileName();
+            const jsonText = getArchiveJsonText();
+
+            // 加入 UTF-8 BOM，讓部分檔案預覽器能正確辨識中文
+            const blob = new Blob(["\ufeff", jsonText], { type: "application/json;charset=utf-8" });
+            return new File([blob], fileName, { type: "application/json" });
+        }
+
+        async function exportArchive() {
+            const file = createArchiveFile();
+
+            // iPhone / iPad Safari：優先使用分享選單，這樣可選「儲存到檔案」
+            try {
+                if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                    await navigator.share({
+                        files: [file],
+                        title: "春宵密存備份",
+                        text: "請選擇「儲存到檔案」保存 JSON 備份。"
+                    });
+                    showToast("已開啟分享選單，請選「儲存到檔案」保存備份");
+                    return;
+                }
+            } catch (err) {
+                console.log("分享式匯出取消或失敗：", err);
+            }
+
+            // 不支援分享檔案時，退回傳統下載
+            try {
+                const blob = new Blob(["\ufeff", getArchiveJsonText()], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                a.rel = "noopener";
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 800);
+
+                showToast(`已嘗試下載：${file.name}。若跳預覽頁，請按分享 → 儲存到檔案`);
+            } catch (err) {
+                showBackupText();
+                showToast("無法直接匯出檔案，已改用備份文字模式");
+            }
+        }
+
+        function showBackupText() {
+            const jsonText = getArchiveJsonText();
+            const area = document.getElementById('backupTextArea');
+            area.value = jsonText;
+            document.getElementById('backupTextModal').classList.add('active');
+            setTimeout(() => {
+                area.focus();
+                area.select();
+            }, 100);
+        }
+
+        function closeBackupTextModal() {
+            document.getElementById('backupTextModal').classList.remove('active');
+        }
+
+        async function copyBackupText() {
+            const area = document.getElementById('backupTextArea');
+            area.focus();
+            area.select();
+
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(area.value);
+                } else {
+                    document.execCommand('copy');
+                }
+                showToast("備份文字已複製，可貼到備忘錄或文字檔保存");
+            } catch (err) {
+                showToast("無法自動複製，請長按文字區手動全選複製");
+            }
+        }
+
+        async function shareBackupTextAsFile() {
+            try {
+                const file = createArchiveFile();
+                if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                    await navigator.share({
+                        files: [file],
+                        title: "春宵密存備份",
+                        text: "請選擇「儲存到檔案」保存 JSON 備份。"
+                    });
+                    showToast("已開啟分享選單，請選「儲存到檔案」");
+                    return;
+                }
+                showToast("此瀏覽器不支援直接分享檔案，請改用複製備份文字");
+            } catch(e) {
+                showToast("分享檔案失敗，請改用複製備份文字");
+            }
+        }
+
+
+        /* --- v25：補齊 V22 導入 / 儲存必要函式 --- */
+        const ROYAL_DB_NAME = "royal_spring_sleep_db_v25";
+        const ROYAL_DB_STORE = "kv";
+
+        function openRoyalDB() {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) return reject(new Error("此瀏覽器不支援 IndexedDB"));
+                const req = indexedDB.open(ROYAL_DB_NAME, 1);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(ROYAL_DB_STORE)) {
+                        db.createObjectStore(ROYAL_DB_STORE);
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error || new Error("IndexedDB 開啟失敗"));
+            });
+        }
+
+        async function idbSet(key, value) {
+            const db = await openRoyalDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(ROYAL_DB_STORE, "readwrite");
+                tx.objectStore(ROYAL_DB_STORE).put(value, key);
+                tx.oncomplete = () => {
+                    db.close();
+                    resolve(true);
+                };
+                tx.onerror = () => {
+                    db.close();
+                    reject(tx.error || new Error("IndexedDB 寫入失敗"));
+                };
+            });
+        }
+
+        async function idbGet(key) {
+            const db = await openRoyalDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(ROYAL_DB_STORE, "readonly");
+                const req = tx.objectStore(ROYAL_DB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error || new Error("IndexedDB 讀取失敗"));
+                tx.oncomplete = () => db.close();
+            });
+        }
+
+        function getRoyalStateObject() {
+            return {
+                records: Array.isArray(records) ? records : [],
+                menstruation: Array.isArray(menstruationRecords) ? menstruationRecords : [],
+                monthBackgrounds: Array.isArray(monthBackgrounds) ? monthBackgrounds : new Array(12).fill(""),
+                exportedAt: new Date().toISOString(),
+                fileType: "royal_spring_sleep_archive_v25"
+            };
+        }
+
+        async function persistRoyalState(reason = "auto") {
+            const state = getRoyalStateObject();
+
+            try {
+                localStorage.setItem('royal_spring_sleep_v2', JSON.stringify(state.records));
+                localStorage.setItem('royal_menstruation_v2', JSON.stringify(state.menstruation));
+                localStorage.setItem('royal_month_backgrounds_v12', JSON.stringify(state.monthBackgrounds));
+                localStorage.setItem('royal_last_save_summary_v25', JSON.stringify({
+                    records: state.records.length,
+                    menstruation: state.menstruation.length,
+                    backgrounds: state.monthBackgrounds.filter(Boolean).length,
+                    reason,
+                    time: state.exportedAt
+                }));
+            } catch (e) {
+                console.warn("localStorage 寫入失敗，改以 IndexedDB 為主：", e);
+            }
+
+            try {
+                await idbSet("royalState", state);
+                return true;
+            } catch (e) {
+                console.warn("IndexedDB 寫入失敗：", e);
+                return false;
+            }
+        }
+
+        function safeParseJsonText(text) {
+            text = String(text || "")
+                .replace(/^\uFEFF/, "")
+                .replace(/^\u200B/, "")
+                .replace(/^\u00EF\u00BB\u00BF/, "")
+                .trim();
+
+            if (!text) throw new Error("檔案內容是空的");
+            if (!(text.startsWith("{") || text.startsWith("["))) {
+                throw new Error("檔案開頭不是 JSON 格式，可能選到 HTML 或錯誤檔案");
+            }
+
+            return JSON.parse(text);
+        }
+
+        function normalizeImportedState(imported) {
+            // 舊版若直接匯出陣列，也接受
+            if (Array.isArray(imported)) {
+                return {
+                    records: imported,
+                    menstruation: [],
+                    monthBackgrounds: Array.isArray(monthBackgrounds) ? monthBackgrounds : new Array(12).fill("")
+                };
+            }
+
+            if (!imported || typeof imported !== "object") {
+                throw new Error("備份內容不是有效物件");
+            }
+
+            const source =
+                (imported.records || imported.menstruation || imported.monthBackgrounds)
+                    ? imported
+                    : (imported.data || imported.archive || imported.payload || imported.springArchive || imported.royalArchive || imported);
+
+            const nextRecords = Array.isArray(source.records)
+                ? source.records
+                : (Array.isArray(source.royalRecords) ? source.royalRecords : []);
+
+            const nextMens = Array.isArray(source.menstruation)
+                ? source.menstruation
+                : (Array.isArray(source.menstruationRecords) ? source.menstruationRecords : []);
+
+            let nextBgs = Array.isArray(source.monthBackgrounds)
+                ? source.monthBackgrounds.slice(0, 12)
+                : (Array.isArray(source.backgrounds)
+                    ? source.backgrounds.slice(0, 12)
+                    : (Array.isArray(monthBackgrounds) ? monthBackgrounds.slice(0, 12) : []));
+
+            while (nextBgs.length < 12) nextBgs.push("");
+
+            return {
+                records: nextRecords,
+                menstruation: nextMens,
+                monthBackgrounds: nextBgs
+            };
+        }
+
+
+        function importArchive(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const imported = safeParseJsonText(e.target.result);
+                    const nextState = normalizeImportedState(imported);
+
+                    records = nextState.records;
+                    menstruationRecords = nextState.menstruation;
+                    monthBackgrounds = nextState.monthBackgrounds;
+
+                    await persistRoyalState('import-json');
+
+                    renderCalendar();
+                    updateStatistics();
+                    renderMenstruationList();
+                    renderBackgroundManager();
+                    applyMonthBackground();
+
+                    showToast(`導入成功：侍寢${records.length}筆、葵水${menstruationRecords.length}筆、背景${monthBackgrounds.filter(Boolean).length}張`);
+                } catch (err) {
+                    console.error("導入失敗：", err);
+                    showToast("❗️ 導入失敗：" + (err && err.message ? err.message : "JSON格式不正確或檔案損壞"));
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file, "utf-8");
+        }
+
+        function clearAllData() {
+            showCustomConfirm("皇上，您確定要徹底清除所有春宵侍寢與葵水生理紀錄，並且「封宮重置」嗎？此舉將讓後宮起居註全部蒸發！", function() {
+                records = [];
+                menstruationRecords = [];
+                localStorage.setItem('royal_spring_sleep_v2', JSON.stringify([]));
+                localStorage.setItem('royal_menstruation_v2', JSON.stringify([]));
+                showToast("後宮起居註與葵水簿已付之一炬，重歸寂靜");
+                renderCalendar();
+                updateStatistics();
+                renderMenstruationList();
+                switchTab('calendar');
+            });
+        }
+
+        /* --- 皇家對話框與提示控制 --- */
+        function showCustomConfirm(message, onConfirm) {
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmModal').classList.add('active');
+            onConfirmAction = onConfirm;
+        }
+
+        document.getElementById('confirmCancelBtn').onclick = () => document.getElementById('confirmModal').classList.remove('active');
+        document.getElementById('confirmOkBtn').onclick = () => {
+            document.getElementById('confirmModal').classList.remove('active');
+            if (onConfirmAction) onConfirmAction();
+        };
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2500);
+        }
+    </script>
+
+<script id="v24-firebase-js">
+(function(){
+  const cfg = {
+    apiKey: "AIzaSyCTMXs7hlA3tR1twCXguH6HyjL9jz1AQLU",
+    authDomain: "test-f2388.firebaseapp.com",
+    projectId: "test-f2388",
+    storageBucket: "test-f2388.firebasestorage.app",
+    messagingSenderId: "338304718772",
+    appId: "1:338304718772:web:922c4b42864221fa6b04e1",
+    measurementId: "G-Z3DPR0HX00"
+  };
+
+  let app=null, auth=null, db=null, provider=null, user=null;
+
+  function status(msg,type){
+    const el=document.getElementById("v24CloudStatus");
+    if(el){el.textContent=msg;el.className="v24-cloud-status "+(type||"");}
+    console.log("[v24 cloud]",msg);
+  }
+
+  function updatePill(){
+    const p=document.getElementById("v24LoginPill");
+    if(!p)return;
+    if(user){
+      p.textContent="已登入："+(user.email||user.uid);
+      p.style.color="#86efac";
+      p.style.borderColor="rgba(34,197,94,.38)";
+      p.style.background="rgba(34,197,94,.12)";
+    }else{
+      p.textContent="尚未登入 Firebase";
+      p.style.color="#bae6fd";
+      p.style.borderColor="rgba(56,189,248,.28)";
+      p.style.background="rgba(56,189,248,.12)";
+    }
+  }
+
+  function init(){
+    try{
+      if(!window.firebase){status("Firebase SDK 尚未載入，請確認網路。","bad");return;}
+      app = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
+      auth = firebase.auth();
+      db = firebase.firestore();
+      provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({prompt:"select_account"});
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.warn);
+      auth.onAuthStateChanged(function(u){
+        user=u||null;
+        updatePill();
+        if(user) status("Firebase 已登入，可上傳雲端或從雲端還原。","ok");
+        else status("Firebase 尚未登入。本機 V22 匯入/匯出功能仍可正常使用。");
+      });
+      updatePill();
+      status("v24 Firebase 初始化完成。此版保留 V22 原本匯入/匯出不變。","ok");
+    }catch(e){
+      status("Firebase 初始化失敗："+(e.code||"")+" / "+e.message,"bad");
+    }
+  }
+
+  function getPayload(){
+    return {
+      records: Array.isArray(records) ? records : [],
+      menstruation: Array.isArray(menstruationRecords) ? menstruationRecords : [],
+      monthBackgrounds: Array.isArray(monthBackgrounds) ? monthBackgrounds : new Array(12).fill(""),
+      appVersion: "spring-v24-firebase-v22base",
+      localTime: new Date().toLocaleString("zh-TW"),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+  }
+
+  function ref(){
+    if(!user) throw new Error("尚未登入 Firebase");
+    return db.collection("users").doc(user.uid).collection("springArchive").doc("main");
+  }
+
+  window.v24FirebaseLogin = async function(){
+    try{
+      if(!auth)init();
+      status("正在開啟 Google Popup 登入...");
+      await auth.signInWithPopup(provider);
+    }catch(e){
+      status("Google 登入失敗："+(e.code||"")+" / "+e.message,"bad");
+    }
+  };
+
+  window.v24FirebaseLogout = async function(){
+    try{
+      if(auth) await auth.signOut();
+      status("已登出 Firebase。","ok");
+    }catch(e){
+      status("登出失敗："+(e.code||"")+" / "+e.message,"bad");
+    }
+  };
+
+  window.v24CloudUpload = async function(){
+    try{
+      if(!user) throw new Error("尚未登入 Firebase");
+      const payload=getPayload();
+      await ref().set(payload,{merge:true});
+      status("雲端上傳成功：侍寢 "+payload.records.length+" 筆、葵水 "+payload.menstruation.length+" 筆、背景 "+payload.monthBackgrounds.filter(Boolean).length+" 張\\n時間："+payload.localTime,"ok");
+      if(typeof showToast==="function")showToast("Firebase 雲端上傳成功");
+    }catch(e){
+      status("雲端上傳失敗："+(e.code||"")+" / "+e.message,"bad");
+    }
+  };
+
+  window.v24CloudRestore = async function(){
+    try{
+      if(!user) throw new Error("尚未登入 Firebase");
+      const doRestore = async function(){
+        const snap=await ref().get();
+        if(!snap.exists){status("雲端尚無資料，請先上傳一次。");return;}
+        const data=snap.data()||{};
+        records = Array.isArray(data.records) ? data.records : [];
+        menstruationRecords = Array.isArray(data.menstruation) ? data.menstruation : [];
+        monthBackgrounds = Array.isArray(data.monthBackgrounds) ? data.monthBackgrounds.slice(0,12) : new Array(12).fill("");
+        while(monthBackgrounds.length<12)monthBackgrounds.push("");
+
+        // 使用 V22 原有儲存機制能用就用，不能用就 localStorage
+        try{
+          if(typeof persistRoyalState==="function") await persistRoyalState("restore-from-v24-cloud");
+          else{
+            localStorage.setItem("royal_spring_sleep_v2",JSON.stringify(records));
+            localStorage.setItem("royal_menstruation_v2",JSON.stringify(menstruationRecords));
+            localStorage.setItem("royal_month_backgrounds_v12",JSON.stringify(monthBackgrounds));
+          }
+        }catch(e){console.warn(e);}
+
+        if(typeof renderCalendar==="function")renderCalendar();
+        if(typeof updateStatistics==="function")updateStatistics();
+        if(typeof renderMenstruationList==="function")renderMenstruationList();
+        if(typeof renderBackgroundManager==="function")renderBackgroundManager();
+        if(typeof applyMonthBackground==="function")applyMonthBackground();
+
+        status("已從雲端還原：侍寢 "+records.length+" 筆、葵水 "+menstruationRecords.length+" 筆、背景 "+monthBackgrounds.filter(Boolean).length+" 張","ok");
+        if(typeof showToast==="function")showToast("已從 Firebase 雲端還原");
+      };
+
+      if(typeof showCustomConfirm==="function"){
+        showCustomConfirm("確定要從 Firebase 雲端還原嗎？目前本機資料會被雲端資料覆蓋。建議先用 V22 原本功能匯出 JSON 備份。", doRestore);
+      }else{
+        if(confirm("確定要從 Firebase 雲端還原嗎？目前本機資料會被覆蓋。")) await doRestore();
+      }
+    }catch(e){
+      status("雲端還原失敗："+(e.code||"")+" / "+e.message,"bad");
+    }
+  };
+
+  window.addEventListener("load",function(){setTimeout(init,600);});
+})();
+</script>
+
+<script>console.log('spring-v25-firebase-import-fixed loaded');</script>
+<script>console.log('spring-v27-cloud-upload-verify loaded');</script>
+
+<script id="v27-cloud-verify-js">
+(function(){
+  const cfg = {
+    apiKey: "AIzaSyCTMXs7hlA3tR1twCXguH6HyjL9jz1AQLU",
+    authDomain: "test-f2388.firebaseapp.com",
+    projectId: "test-f2388",
+    storageBucket: "test-f2388.firebasestorage.app",
+    messagingSenderId: "338304718772",
+    appId: "1:338304718772:web:922c4b42864221fa6b04e1",
+    measurementId: "G-Z3DPR0HX00"
+  };
+
+  function setMainStatus(msg,type){
+    const el=document.getElementById("v24CloudStatus");
+    if(el){el.textContent=msg;el.className="v24-cloud-status "+(type||"");}
+    console.log("[v27 cloud]", msg);
+  }
+
+  function setVerify(msg,type){
+    const el=document.getElementById("v27CloudVerifyStatus");
+    if(el){el.textContent=msg;el.className="v24-cloud-status "+(type||"");}
+    console.log("[v27 verify]", msg);
+  }
+
+  function ensureFirebase(){
+    if(!window.firebase) throw new Error("Firebase SDK 尚未載入");
+    if(!firebase.apps.length) firebase.initializeApp(cfg);
+    return {
+      auth: firebase.auth(),
+      db: firebase.firestore()
+    };
+  }
+
+  function currentCounts(){
+    return {
+      records: Array.isArray(records) ? records.length : 0,
+      menstruation: Array.isArray(menstruationRecords) ? menstruationRecords.length : 0,
+      backgrounds: Array.isArray(monthBackgrounds) ? monthBackgrounds.filter(Boolean).length : 0
+    };
+  }
+
+  function currentPayload(){
+    const counts=currentCounts();
+    return {
+      records: Array.isArray(records) ? records : [],
+      menstruation: Array.isArray(menstruationRecords) ? menstruationRecords : [],
+      monthBackgrounds: Array.isArray(monthBackgrounds) ? monthBackgrounds : new Array(12).fill(""),
+      appVersion: "spring-v27-cloud-verify",
+      cloudClientTime: new Date().toISOString(),
+      localTime: new Date().toLocaleString("zh-TW"),
+      counts: counts,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+  }
+
+  function ref(db,user){
+    return db.collection("users").doc(user.uid).collection("springArchive").doc("main");
+  }
+
+  async function getCloudSnapshot(){
+    const f=ensureFirebase();
+    const user=f.auth.currentUser;
+    if(!user) throw new Error("尚未登入 Firebase");
+    const snap=await ref(f.db,user).get();
+    return {snap,user,db:f.db};
+  }
+
+  window.v24CloudUpload = async function(){
+    try{
+      const f=ensureFirebase();
+      const user=f.auth.currentUser;
+      if(!user) throw new Error("尚未登入 Firebase");
+
+      const payload=currentPayload();
+      const beforeMsg =
+        "準備上傳雲端...\\n" +
+        "本機資料：侍寢 " + payload.counts.records + " 筆、葵水 " + payload.counts.menstruation + " 筆、背景 " + payload.counts.backgrounds + " 張\\n" +
+        "登入帳號：" + (user.email || user.uid);
+      setMainStatus(beforeMsg);
+      setVerify(beforeMsg);
+
+      await ref(f.db,user).set(payload,{merge:false});
+
+      // 寫入後立刻讀回驗證
+      const verifySnap=await ref(f.db,user).get();
+      if(!verifySnap.exists) throw new Error("寫入後讀回失敗：雲端文件不存在");
+
+      const data=verifySnap.data() || {};
+      const cloudCounts = data.counts || {
+        records: Array.isArray(data.records) ? data.records.length : 0,
+        menstruation: Array.isArray(data.menstruation) ? data.menstruation.length : 0,
+        backgrounds: Array.isArray(data.monthBackgrounds) ? data.monthBackgrounds.filter(Boolean).length : 0
+      };
+
+      const ok =
+        cloudCounts.records === payload.counts.records &&
+        cloudCounts.menstruation === payload.counts.menstruation &&
+        cloudCounts.backgrounds === payload.counts.backgrounds;
+
+      const msg =
+        (ok ? "✅ 雲端上傳成功，並已讀回驗證一致。" : "⚠️ 雲端已寫入，但讀回筆數與本機不同，請檢查。") + "\\n" +
+        "本機：侍寢 " + payload.counts.records + "、葵水 " + payload.counts.menstruation + "、背景 " + payload.counts.backgrounds + "\\n" +
+        "雲端：侍寢 " + cloudCounts.records + "、葵水 " + cloudCounts.menstruation + "、背景 " + cloudCounts.backgrounds + "\\n" +
+        "上傳時間：" + payload.localTime + "\\n" +
+        "登入帳號：" + (user.email || user.uid);
+
+      setMainStatus(msg, ok ? "ok" : "bad");
+      setVerify(msg, ok ? "ok" : "bad");
+      if(typeof showToast==="function") showToast(ok ? "雲端上傳成功並驗證一致" : "雲端上傳後驗證不一致");
+    }catch(e){
+      const msg="❌ 雲端上傳失敗：" + (e.code || "") + " / " + e.message;
+      setMainStatus(msg,"bad");
+      setVerify(msg,"bad");
+      if(typeof showToast==="function") showToast("雲端上傳失敗");
+    }
+  };
+
+  window.v24CloudRestore = async function(){
+    try{
+      const got = await getCloudSnapshot();
+      const snap = got.snap;
+      const user = got.user;
+
+      if(!snap.exists){
+        setMainStatus("雲端尚無資料，請先成功上傳一次。","bad");
+        setVerify("雲端尚無資料，請先成功上傳一次。","bad");
+        return;
+      }
+
+      const data=snap.data() || {};
+      const cloudCounts = data.counts || {
+        records: Array.isArray(data.records) ? data.records.length : 0,
+        menstruation: Array.isArray(data.menstruation) ? data.menstruation.length : 0,
+        backgrounds: Array.isArray(data.monthBackgrounds) ? data.monthBackgrounds.filter(Boolean).length : 0
+      };
+      const localCounts=currentCounts();
+
+      const confirmText =
+        "確定要從 Firebase 雲端還原嗎？\\n\\n" +
+        "雲端資料：侍寢 " + cloudCounts.records + " 筆、葵水 " + cloudCounts.menstruation + " 筆、背景 " + cloudCounts.backgrounds + " 張\\n" +
+        "雲端時間：" + (data.localTime || data.cloudClientTime || "未知") + "\\n\\n" +
+        "目前本機：侍寢 " + localCounts.records + " 筆、葵水 " + localCounts.menstruation + " 筆、背景 " + localCounts.backgrounds + " 張\\n\\n" +
+        "如果雲端筆數比較少，還原會覆蓋掉新資料。建議先匯出 JSON 備份。";
+
+      const doRestore = async function(){
+        records = Array.isArray(data.records) ? data.records : [];
+        menstruationRecords = Array.isArray(data.menstruation) ? data.menstruation : [];
+        monthBackgrounds = Array.isArray(data.monthBackgrounds) ? data.monthBackgrounds.slice(0,12) : new Array(12).fill("");
+        while(monthBackgrounds.length<12) monthBackgrounds.push("");
+
+        try{
+          if(typeof persistRoyalState==="function") await persistRoyalState("restore-from-v27-cloud");
+          else{
+            localStorage.setItem("royal_spring_sleep_v2",JSON.stringify(records));
+            localStorage.setItem("royal_menstruation_v2",JSON.stringify(menstruationRecords));
+            localStorage.setItem("royal_month_backgrounds_v12",JSON.stringify(monthBackgrounds));
+          }
+        }catch(err){console.warn(err);}
+
+        if(typeof renderCalendar==="function") renderCalendar();
+        if(typeof updateStatistics==="function") updateStatistics();
+        if(typeof renderMenstruationList==="function") renderMenstruationList();
+        if(typeof renderBackgroundManager==="function") renderBackgroundManager();
+        if(typeof applyMonthBackground==="function") applyMonthBackground();
+
+        const msg=
+          "✅ 已從雲端還原。\\n" +
+          "還原資料：侍寢 " + records.length + " 筆、葵水 " + menstruationRecords.length + " 筆、背景 " + monthBackgrounds.filter(Boolean).length + " 張\\n" +
+          "雲端時間：" + (data.localTime || data.cloudClientTime || "未知") + "\\n" +
+          "登入帳號：" + (user.email || user.uid);
+        setMainStatus(msg,"ok");
+        setVerify(msg,"ok");
+        if(typeof showToast==="function") showToast("已從 Firebase 雲端還原");
+      };
+
+      setVerify("即將還原，雲端資料時間：" + (data.localTime || data.cloudClientTime || "未知") + "\\n雲端筆數：侍寢 " + cloudCounts.records + "、葵水 " + cloudCounts.menstruation + "、背景 " + cloudCounts.backgrounds);
+
+      if(typeof showCustomConfirm==="function"){
+        showCustomConfirm(confirmText, doRestore);
+      }else{
+        if(confirm(confirmText)) await doRestore();
+      }
+    }catch(e){
+      const msg="❌ 雲端還原失敗：" + (e.code || "") + " / " + e.message;
+      setMainStatus(msg,"bad");
+      setVerify(msg,"bad");
+    }
+  };
+
+  window.v27CheckCloud = async function(){
+    try{
+      const got = await getCloudSnapshot();
+      if(!got.snap.exists){
+        setVerify("雲端目前沒有資料。","bad");
+        return;
+      }
+      const data=got.snap.data() || {};
+      const c=data.counts || {
+        records: Array.isArray(data.records) ? data.records.length : 0,
+        menstruation: Array.isArray(data.menstruation) ? data.menstruation.length : 0,
+        backgrounds: Array.isArray(data.monthBackgrounds) ? data.monthBackgrounds.filter(Boolean).length : 0
+      };
+      setVerify("雲端目前資料：侍寢 " + c.records + "、葵水 " + c.menstruation + "、背景 " + c.backgrounds + "\\n雲端時間：" + (data.localTime || data.cloudClientTime || "未知"),"ok");
+    }catch(e){
+      setVerify("查詢雲端失敗：" + (e.code || "") + " / " + e.message,"bad");
+    }
+  };
+
+  window.addEventListener("load",function(){
+    setTimeout(function(){
+      setVerify("v27 驗證狀態：已啟用。按「立即上傳雲端」後會寫入並讀回驗證。");
+    },1200);
+  });
+})();
+</script>
+
+</body>
+</html>
