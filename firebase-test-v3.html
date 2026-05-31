@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>春宵Firebase測試版_v3_Compat</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:18px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei",sans-serif;color:#f8fafc;background:radial-gradient(circle at 20% 20%,rgba(219,39,119,.22),transparent 40%),radial-gradient(circle at 80% 80%,rgba(251,113,133,.15),transparent 45%),linear-gradient(135deg,#050008 0%,#16031f 100%)}.app{width:min(720px,100%);margin:0 auto;padding:20px;border:1px solid rgba(212,175,55,.25);border-radius:24px;background:rgba(25,6,35,.78);box-shadow:0 18px 50px rgba(0,0,0,.45);backdrop-filter:blur(16px)}.sub{letter-spacing:4px;font-size:11px;color:#f472b6;font-weight:800;text-align:center;margin-bottom:6px}h1{margin:0 0 18px;text-align:center;color:#fef08a;font-size:27px;letter-spacing:3px}.card{border:1px solid rgba(212,175,55,.20);background:rgba(45,12,55,.72);border-radius:18px;padding:16px;margin:14px 0}.title{color:#fef08a;font-weight:900;margin-bottom:10px;font-size:18px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:block;color:#cbd5e1;font-weight:700;margin-bottom:6px;font-size:13px}input,textarea{width:100%;border-radius:13px;border:1px solid rgba(212,175,55,.25);background:rgba(10,2,18,.72);color:#f8fafc;padding:12px;font-size:16px;outline:none}textarea{min-height:82px;resize:vertical}button{border:0;border-radius:14px;padding:12px 14px;color:white;font-weight:900;font-size:15px;cursor:pointer;background:linear-gradient(135deg,#db2777,#f97316);box-shadow:0 8px 20px rgba(219,39,119,.25)}button.secondary{background:rgba(255,255,255,.08);color:#fef08a;border:1px solid rgba(212,175,55,.25);box-shadow:none}button.blue{background:linear-gradient(135deg,#0284c7,#38bdf8)}.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.status{padding:10px 12px;border-radius:13px;background:rgba(0,0,0,.25);color:#cbd5e1;line-height:1.55;white-space:pre-wrap;word-break:break-word;font-size:13px}.ok{color:#22c55e}.bad{color:#ef4444}.record{padding:12px;border:1px solid rgba(255,255,255,.10);border-radius:15px;background:rgba(0,0,0,.22);margin-top:10px}.record strong{color:#fef08a;font-size:17px}.small{color:#cbd5e1;font-size:12px;line-height:1.6;margin-top:8px}code{color:#fef08a}@media(max-width:560px){.app{padding:16px;border-radius:20px}h1{font-size:23px}.row{grid-template-columns:1fr}button{width:100%}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="sub">FIREBASE CLOUD TEST</div>
+  <h1>春宵 Firebase 測試版 v3</h1>
+
+  <section class="card">
+    <div class="title">① 登入狀態</div>
+    <div id="loginStatus" class="status">尚未登入</div>
+    <div class="btns">
+      <button id="btnLogin" type="button">Google Redirect 登入</button>
+      <button id="btnPopup" type="button" class="secondary">備援 Popup 登入</button>
+      <button id="btnLogout" type="button" class="secondary">登出</button>
+    </div>
+    <div class="small">
+      v3 改用 Firebase Compat SDK，並加入明確偵錯。<br>
+      如果按登入後沒有跳轉，下方「測試狀態」會顯示錯誤。
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="title">② 寫入測試資料</div>
+    <div class="row">
+      <div><label>妃嬪姓名</label><input id="inputName" value="寶鏵娘娘"></div>
+      <div><label>狀態</label><input id="inputStatus" value="Firebase 測試成功"></div>
+    </div>
+    <div style="margin-top:12px;"><label>備註</label><textarea id="inputNote">這是一筆春宵錄 Firebase 雲端測試資料。</textarea></div>
+    <div class="btns">
+      <button id="btnWrite" type="button" class="blue">寫入雲端測試資料</button>
+      <button id="btnRead" type="button" class="secondary">讀取雲端資料</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="title">③ 雲端讀取結果</div>
+    <div id="resultArea" class="status">尚未讀取</div>
+    <div id="recordsList"></div>
+  </section>
+
+  <section class="card">
+    <div class="title">④ 測試狀態</div>
+    <div id="debugArea" class="status">等待操作...</div>
+    <div class="small">
+      必須確認：Authentication → Sign-in method → Google 已啟用。<br>
+      Authorized domains 要有：<code>cheese1118.github.io</code>
+    </div>
+  </section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCTMXs7hlA3tR1twCXguH6HyjL9jz1AQLU",
+  authDomain: "test-f2388.firebaseapp.com",
+  projectId: "test-f2388",
+  storageBucket: "test-f2388.firebasestorage.app",
+  messagingSenderId: "338304718772",
+  appId: "1:338304718772:web:922c4b42864221fa6b04e1",
+  measurementId: "G-Z3DPR0HX00"
+};
+
+let app, auth, db, provider, currentUser = null;
+
+const loginStatus = document.getElementById("loginStatus");
+const resultArea = document.getElementById("resultArea");
+const debugArea = document.getElementById("debugArea");
+const recordsList = document.getElementById("recordsList");
+
+function log(message, type="") {
+  const prefix = type === "ok" ? "✅ " : type === "bad" ? "❌ " : "ℹ️ ";
+  debugArea.textContent = prefix + message;
+  debugArea.className = "status " + (type === "ok" ? "ok" : type === "bad" ? "bad" : "");
+  console.log(message);
+}
+
+function requireLogin() {
+  if (!currentUser) {
+    log("尚未登入，請先按 Google 登入。", "bad");
+    throw new Error("尚未登入");
+  }
+}
+
+async function initFirebase() {
+  try {
+    if (!window.firebase) {
+      log("Firebase SDK 沒有載入，可能被網路或瀏覽器阻擋。", "bad");
+      return;
+    }
+
+    app = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+    auth.onAuthStateChanged((user) => {
+      currentUser = user;
+      if (user) {
+        loginStatus.innerHTML =
+          `<span class="ok">已登入</span>\n` +
+          `姓名：${user.displayName || "(無顯示名稱)"}\n` +
+          `Email：${user.email || "(無 Email)"}\n` +
+          `UID：${user.uid}`;
+        log("登入成功，可以寫入與讀取資料。", "ok");
+      } else {
+        loginStatus.textContent = "尚未登入";
+        log("Firebase 已初始化，目前尚未登入。");
+      }
+    });
+
+    try {
+      const result = await auth.getRedirectResult();
+      if (result && result.user) {
+        log("Redirect 登入返回成功。", "ok");
+      }
+    } catch (err) {
+      log("Redirect 返回錯誤：" + err.code + " / " + err.message, "bad");
+    }
+
+  } catch (err) {
+    log("Firebase 初始化失敗：" + err.code + " / " + err.message, "bad");
+  }
+}
+
+document.getElementById("btnLogin").addEventListener("click", async function() {
+  log("你已點擊 Google Redirect 登入，準備跳轉...");
+  try {
+    if (!auth || !provider) throw new Error("Auth 尚未初始化");
+    await auth.signInWithRedirect(provider);
+  } catch (err) {
+    log("Redirect 啟動失敗：" + err.code + " / " + err.message, "bad");
+  }
+});
+
+document.getElementById("btnPopup").addEventListener("click", async function() {
+  log("你已點擊 Popup 備援登入...");
+  try {
+    if (!auth || !provider) throw new Error("Auth 尚未初始化");
+    await auth.signInWithPopup(provider);
+  } catch (err) {
+    log("Popup 登入失敗：" + err.code + " / " + err.message, "bad");
+  }
+});
+
+document.getElementById("btnLogout").addEventListener("click", async function() {
+  try {
+    if (!auth) throw new Error("Auth 尚未初始化");
+    await auth.signOut();
+    resultArea.textContent = "尚未讀取";
+    recordsList.innerHTML = "";
+    log("已登出。", "ok");
+  } catch (err) {
+    log("登出失敗：" + err.code + " / " + err.message, "bad");
+  }
+});
+
+document.getElementById("btnWrite").addEventListener("click", async function() {
+  try {
+    requireLogin();
+    const name = document.getElementById("inputName").value.trim() || "未命名娘娘";
+    const status = document.getElementById("inputStatus").value.trim() || "測試狀態";
+    const note = document.getElementById("inputNote").value.trim();
+
+    await db.collection("users").doc(currentUser.uid).collection("testRecords").doc("demo").set({
+      name,
+      status,
+      note,
+      source: "春宵Firebase測試版_v3_Compat",
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      localTime: new Date().toLocaleString("zh-TW")
+    });
+
+    log("已成功寫入 Firestore 雲端。", "ok");
+  } catch (err) {
+    log("寫入失敗：" + err.code + " / " + err.message, "bad");
+  }
+});
+
+document.getElementById("btnRead").addEventListener("click", async function() {
+  try {
+    requireLogin();
+    const snap = await db.collection("users").doc(currentUser.uid).collection("testRecords").doc("demo").get();
+
+    if (!snap.exists) {
+      resultArea.textContent = "雲端尚無 demo 測試資料，請先按「寫入雲端測試資料」。";
+      recordsList.innerHTML = "";
+      log("讀取成功，但目前沒有資料。");
+      return;
+    }
+
+    const data = snap.data();
+    resultArea.innerHTML = `<span class="ok">讀取成功</span>\n路徑：users/${currentUser.uid}/testRecords/demo`;
+    recordsList.innerHTML = `<div class="record"><strong>${data.name || ""}</strong><div class="small">狀態：${data.status || ""}</div><div class="small">備註：${data.note || ""}</div><div class="small">本機時間：${data.localTime || ""}</div><div class="small">來源：${data.source || ""}</div></div>`;
+    log("已成功從 Firestore 讀回測試資料。", "ok");
+  } catch (err) {
+    log("讀取失敗：" + err.code + " / " + err.message, "bad");
+  }
+});
+
+window.addEventListener("load", initFirebase);
+</script>
+</body>
+</html>
